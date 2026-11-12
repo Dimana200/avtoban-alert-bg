@@ -5,21 +5,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          UA="avtoban-alert-bg/1.0 (https://github.com/Dimana200/avtoban-alert-bg)"
-          curl -4 -sS -A "$UA" "https://weather.bg/obshtini/index.php?z=d" -o pd.html
-          curl -4 -sS -A "$UA" "https://weather.bg/obshtini/index.php?z=d&o=PDV" -o pdv.html
-          echo "== pdv bytes $(wc -c < pdv.html)"
           python3 - <<'PY'
-          import re,html
-          for f in ("pd.html","pdv.html"):
-              s=open(f,encoding="utf-8",errors="replace").read()
-              print("=====",f)
-              i=s.find("Асеновград"); print("Асеновград at",i); print(s[max(0,i-1500):i+800] if i>0 else "")
-              sc=re.findall(r"<script[^>]*>(.*?)</script>",s,re.S)
-              print("scripts:",[len(x) for x in sc]); 
-              for x in sc[:3]: print(x[:700])
-              rows=re.findall(r"<tr[^>]*>(.*?)</tr>",s,re.S)
-              print("rows",len(rows))
-              for r in rows[:6]:
-                  t=re.sub(r"<[^>]+>"," ",r); print(" |",re.sub(r"\s+"," ",html.unescape(t))[:200], re.findall(r'(?:src|alt|title|class|bgcolor|style)="([^"]{0,60})"',r)[:8])
+          import re,html,urllib.request,collections,socket
+          g=socket.getaddrinfo; socket.getaddrinfo=lambda h,p,f=0,*a,**k: g(h,p,socket.AF_INET,*a,**k)
+          UA={"User-Agent":"avtoban-alert-bg/1.0 (https://github.com/Dimana200/avtoban-alert-bg)"}
+          get=lambda u: urllib.request.urlopen(urllib.request.Request(u,headers=UA),timeout=60).read().decode("utf-8","replace")
+          colors=collections.Counter()
+          for z in ("d","u"):
+            for o in ["PDV","VRC","SOF","HKV","BGS","VAR"]:
+              s=get(f"https://weather.bg/obshtini/index.php?z={z}&o={o}")
+              i=s.find("<div class='obl2'>")
+              # region block before the municipal table
+              j=s.rfind("<table",0,i); blk=s[max(0,i-6000):i]
+              txt=re.sub(r"\s+"," ",html.unescape(re.sub(r"<[^>]+>"," ",blk)))
+              print(f"== {z} {o} region text:", txt[-900:])
+              print("   region imgs/colors:", re.findall(r"(?:src ?=|background-color:)\s*'?([^'\s>;]+)",blk)[-20:])
+              for c in re.findall(r"background-color:(#[0-9a-fA-F]{6})", s[i:]): colors[c]+=1
+          print("municipal colors:", colors)
           PY
