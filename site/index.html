@@ -289,7 +289,7 @@ function stamp() {
   if (!haz) return;
   var t = new Date(haz.updated), min = Math.round((Date.now() - t) / 60000);
   el.className = "upd" + (min > 90 ? " stale" : "");
-  el.innerHTML = "Обновено <b>" + t.toLocaleTimeString("bg-BG", { hour: "2-digit", minute: "2-digit" }) + "</b> (преди " + Math.max(0, min) + " мин.) · " + roads.roads.length + " пътя";
+  el.innerHTML = "Обновено <b>" + t.toLocaleTimeString("bg-BG", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Sofia" }) + " ч.</b> българско време (преди " + Math.max(0, min) + " мин.) · " + roads.roads.length + " пътя";
 }
 function load() {
   return Promise.all([
