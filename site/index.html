@@ -355,7 +355,9 @@ function appMode() {
 }
 function start() {
   canvas = L.canvas({ padding: 0.3, tolerance: 6 });
-  map = L.map("map", { zoomControl: true, preferCanvas: true }).setView([42.7, 25.3], 7);
+  // the map stays over Bulgaria: a swipe meant for the page cannot push it out into the sea
+  var BG = L.latLngBounds([40.9, 21.9], [44.6, 29.0]);
+  map = L.map("map", { zoomControl: true, preferCanvas: true, maxBounds: BG, maxBoundsViscosity: 1.0, minZoom: 6 }).setView([42.7, 25.3], 7);
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
   document.getElementById("list").addEventListener("click", function (e) {
     var b = e.target.closest("[data-g]"); if (!b) return;
