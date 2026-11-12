@@ -6,8 +6,8 @@ jobs:
     steps:
       - run: |
           UA="avtoban-alert-bg/1.0 (https://github.com/Dimana200/avtoban-alert-bg)"
-          for u in https://www.api.bg/ https://www.api.bg/index.php/bg/prescentar/novini https://www.bta.bg/bg/news/bulgaria/oficial-messages; do
-            echo "=== $u"; curl -4 -sL -A "$UA" -m 40 -o page.html -w "%{http_code} %{url_effective}\n" "$u"
+          for u in https://www.bta.bg/bg/news/bulgaria/oficial-messages https://api.bg/ http://www.api.bg/ https://www.api.bg/index.php/bg/; do
+            echo "=== $u"; curl -4 -sL -A "$UA" -m 40 -o page.html -w "%{http_code} %{url_effective}\n" "$u" || echo "curl failed $?"; touch page.html
             python3 - <<'PY'
           import re,html
           s=open('page.html',encoding='utf-8',errors='replace').read()
