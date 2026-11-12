@@ -6,20 +6,27 @@ jobs:
     steps:
       - run: |
           python3 - <<'PY'
-          import re,html,urllib.request,collections,socket
+          import re,html,urllib.request,collections,socket,time
           g=socket.getaddrinfo; socket.getaddrinfo=lambda h,p,f=0,*a,**k: g(h,p,socket.AF_INET,*a,**k)
           UA={"User-Agent":"avtoban-alert-bg/1.0 (https://github.com/Dimana200/avtoban-alert-bg)"}
-          get=lambda u: urllib.request.urlopen(urllib.request.Request(u,headers=UA),timeout=60).read().decode("utf-8","replace")
-          colors=collections.Counter()
-          for z in ("d","u"):
-            for o in ["PDV","VRC","SOF","HKV","BGS","VAR"]:
-              s=get(f"https://weather.bg/obshtini/index.php?z={z}&o={o}")
+          def get(u):
+            for i in range(4):
+              try: return urllib.request.urlopen(urllib.request.Request(u,headers=UA),timeout=60).read().decode("utf-8","replace")
+              except Exception as e: print("retry",u,e); time.sleep(10)
+          s=get("https://weather.bg/obshtini/index.php?z=d&o=PDV")
+          for m in list(re.finditer(r"images/static/icon/", s))[:6]:
+              print("ICON CTX:", re.sub(r"\s+"," ",s[m.start()-700:m.start()+200]).replace("\n"," "))
+          i=s.find("издадена на"); print("ISSUED CTX:", re.sub(r"\s+"," ",s[i-1500:i+200]))
+          colors=collections.Counter(); bad={}
+          for o in "BGS BLG DOB GAB HKV JAM KNL KRZ LOV MON PAZ PDV PER PVN RAZ RSE SFO SHU SLS SLV SML SOF SZR TGV VAR VID VRC VTR".split():
+              time.sleep(3); s=get(f"https://weather.bg/obshtini/index.php?z=d&o={o}")
+              if not s: continue
               i=s.find("<div class='obl2'>")
-              # region block before the municipal table
-              j=s.rfind("<table",0,i); blk=s[max(0,i-6000):i]
-              txt=re.sub(r"\s+"," ",html.unescape(re.sub(r"<[^>]+>"," ",blk)))
-              print(f"== {z} {o} region text:", txt[-900:])
-              print("   region imgs/colors:", re.findall(r"(?:src ?=|background-color:)\s*'?([^'\s>;]+)",blk)[-20:])
-              for c in re.findall(r"background-color:(#[0-9a-fA-F]{6})", s[i:]): colors[c]+=1
-          print("municipal colors:", colors)
+              for r in re.findall(r"<tr><td>([^<]+)</td>(.*?)</tr>", s[i:], re.S):
+                  cs=re.findall(r"background-color:(#[0-9a-fA-F]{6})", r[1])
+                  for c in cs: colors[c]+=1
+                  if any(c.lower()!="#00ff00" for c in cs): bad[f"{o}/{r[0]}"]=cs
+              icons=re.findall(r"images/static/icon/([^'\"]+)", s[:i])
+              print(o, "region icons:", icons)
+          print("colors", colors); print("non-green municipalities:", list(bad.items())[:15])
           PY
