@@ -158,7 +158,7 @@ h2 { font: 700 15px/1.2 var(--f-display); text-transform: uppercase; letter-spac
     <div class="list" id="list"></div>
     <h2>Официални предупреждения (НИМХ)</h2>
     <div class="list" id="warn"></div>
-    <p class="note">Прогнозни данни за квадрати от около 20 × 20 km, обновявани всеки час. Не заместват указанията на полицията и АПИ. При произшествие: <b>112</b>.</p>
+    <p class="note">Прогнозни данни за квадрати от около 20 × 20 km, обновявани всеки час. Мъглата по прогноза е само „внимание“, защото проверката с летищата показа много фалшиви тревоги. „Опасно“ и „много опасно“ за мъгла идват от измерена видимост на летищата. Не заместват указанията на полицията и АПИ. При произшествие: <b>112</b>.</p>
     <p class="note">Време: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0) · Предупреждения: <a href="https://meteoalarm.org/" target="_blank" rel="noopener">Meteoalarm</a> / НИМХ · Пътища: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></p>
   </aside>
 </main>
@@ -166,7 +166,8 @@ h2 { font: 700 15px/1.2 var(--f-display); text-transform: uppercase; letter-spac
 <script>
 "use strict";
 var TYPES = {
-  fog:   { name: "Мъгла",      fmt: function (v) { return "видимост " + v + " m"; } },
+  fog:   { name: "Възможна мъгла", fmt: function () { return "по прогноза"; } },
+  fogobs: { name: "Мъгла", fmt: function (v) { return "измерена видимост " + v.v + " m (" + v.s + ")"; } },
   wind:  { name: "Силен вятър", fmt: function (v) { return "пориви до " + v + " km/h"; } },
   snow:  { name: "Снеговалеж", fmt: function (v) { return v + " cm/h"; } },
   ice:   { name: "Поледица",   fmt: function (v) { return "валежи при " + v + " °C"; } },

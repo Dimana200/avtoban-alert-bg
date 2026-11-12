@@ -11,7 +11,7 @@ from common import http
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "site")
 API = "https://api.open-meteo.com/v1/forecast"
-VARS = "visibility,wind_gusts_10m,snowfall,temperature_2m,precipitation,weather_code"
+VARS = "wind_gusts_10m,snowfall,temperature_2m,precipitation,weather_code"
 METEOALARM = "https://feeds.meteoalarm.org/feeds/meteoalarm-legacy-atom-bulgaria"
 BATCH = 50
 
@@ -19,11 +19,15 @@ BATCH = 50
 def rate(h):
     """Hazards for one forecast hour -> list of (type, level, value)."""
     out = []
-    vis, gust, snow = h.get("visibility"), h.get("wind_gusts_10m"), h.get("snowfall")
+    gust, snow = h.get("wind_gusts_10m"), h.get("snowfall")
     temp, prec, code = h.get("temperature_2m"), h.get("precipitation") or 0, h.get("weather_code")
-    if vis is not None:
-        lv = 3 if vis < 100 else 2 if vis < 200 else 1 if vis < 500 else 0
-        if lv: out.append(("fog", lv, round(vis)))
+    # Fog: a 30-day check against airport observations (scripts/validate_month.py) showed that the
+    # model visibility gives mostly false alarms (Plovdiv 20-100 m forecast vs 2600-7000 m measured).
+    # The model's fog weather code was the best rule (caught ~half of fog hours), but 3 of 4 alarms
+    # were still wrong, so forecast fog is only ever "attention". Orange/red fog comes from real
+    # measurements (airports) or official warnings.
+    if code in (45, 48):
+        out.append(("fog", 1, None))
     if gust is not None:
         lv = 3 if gust >= 90 else 2 if gust >= 70 else 1 if gust >= 55 else 0
         if lv: out.append(("wind", lv, round(gust)))
@@ -94,10 +98,44 @@ def warnings():
     return sorted(out, key=lambda w: (-w["level"], w["area"]))
 
 
+AIRPORTS = {"LBSF": ("летище София", 42.695, 23.406), "LBPD": ("летище Пловдив", 42.068, 24.851),
+            "LBBG": ("летище Бургас", 42.570, 27.515), "LBWN": ("летище Варна", 43.232, 27.825),
+            "LBGO": ("летище Горна Оряховица", 43.152, 25.713)}
+OBS_RADIUS_KM = 25
+
+
+def measured_fog():
+    """Latest airport visibility (METAR, last 90 min) under 1000 m -> {icao: (name, lat, lon, metres, time)}."""
+    from validate import metar_vis
+    try:
+        js = http("https://aviationweather.gov/api/data/metar?" + urllib.parse.urlencode(
+            {"ids": ",".join(AIRPORTS), "hours": 1.5, "format": "json"}), timeout=60)
+    except Exception as e:  # noqa: BLE001
+        print("airport observations unavailable:", e)
+        return {}
+    latest = {}
+    for m in js:
+        icao = m.get("icaoId")
+        if icao in AIRPORTS and icao not in latest:          # newest report comes first
+            v = metar_vis(m.get("rawOb", ""))
+            if v is not None:
+                latest[icao] = v
+    print("airport visibility now:", latest)
+    return {k: (*AIRPORTS[k], v) for k, v in latest.items() if v < 1000}
+
+
 def main():
     roads = json.load(open(os.path.join(ROOT, "roads.json"), encoding="utf-8"))
     pts = roads["points"]
     res = weather(pts)
+    from common import km
+    for icao, (name, lat, lon, v) in measured_fog().items():
+        lv = 3 if v < 200 else 2
+        for p in pts:
+            if km((p["lat"], p["lon"]), (lat, lon)) <= OBS_RADIUS_KM:
+                cur = [h for h in res.get(p["id"], []) if h["type"] != "fog"]
+                res[p["id"]] = sorted(cur + [{"type": "fogobs", "level": lv, "value": {"v": v, "s": name}, "at": None}],
+                                      key=lambda x: -x["level"])
     out = {"updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
            "points": {k: v for k, v in res.items() if v}, "checked": len(res), "warnings": warnings()}
     json.dump(out, open(os.path.join(ROOT, "hazards.json"), "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
