@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Avtoban Alert BG</title>
+<meta name="description" content="Мъгла, вятър, сняг и заледяване по магистралите в България, обновявано на всеки 30 минути">
+<meta name="theme-color" content="#14171C">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@600;700&family=Noto+Sans:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+/* Layout: map fills the screen; a panel (right on desktop, bottom sheet on phone) lists hazards worst-first.
+   Colours are the European weather-warning scale (yellow / orange / red) on road-sign neutrals. */
+:root {
+  --bg: #F1F2F4;
+  --surface: #FFFFFF;
+  --fg: #14171C;
+  --muted: #5A616E;
+  --line: #D8DBE1;
+  --ok: #2E8B57;
+  --lv1: #F2C200;      /* yellow */
+  --lv2: #F07F0E;      /* orange */
+  --lv3: #D7191C;      /* red */
+  --lv1-ink: #5C4A00;
+  --sign: #D7191C;     /* warning-triangle border */
+  --tile-filter: none;
+  --shadow: 0 8px 28px rgba(15, 20, 30, .16);
+  --f-display: "Roboto Condensed", "Arial Narrow", Arial, sans-serif;
+  --f-body: "Noto Sans", "Segoe UI", Roboto, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1216; --surface: #191D24; --fg: #ECEEF2; --muted: #A3AAB7; --line: #2C323C;
+    --ok: #4CC38A; --lv1-ink: #FFE27A;
+    --tile-filter: invert(1) hue-rotate(180deg) brightness(.82) contrast(.9);
+    --shadow: 0 8px 28px rgba(0, 0, 0, .5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F1216; --surface: #191D24; --fg: #ECEEF2; --muted: #A3AAB7; --line: #2C323C;
+  --ok: #4CC38A; --lv1-ink: #FFE27A;
+  --tile-filter: invert(1) hue-rotate(180deg) brightness(.82) contrast(.9);
+  --shadow: 0 8px 28px rgba(0, 0, 0, .5);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.45 var(--f-body); display: flex; flex-direction: column; }
+header {
+  background: var(--surface); border-bottom: 1px solid var(--line); z-index: 1000;
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.bar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding-block: 10px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand h1 { font: 700 23px/1 var(--f-display); margin: 0; letter-spacing: .01em; }
+.brand small { display: block; color: var(--muted); font-size: 12px; margin-top: 3px; }
+.upd { margin-left: auto; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+.upd b { color: var(--fg); font-weight: 600; }
+.upd.stale b { color: var(--lv3); }
+main { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 380px; }
+#map { min-height: 0; background: var(--bg); }
+.leaflet-tile-pane { filter: var(--tile-filter); }
+.leaflet-container { font-family: var(--f-body); background: var(--bg); }
+.leaflet-control-attribution { background: var(--surface) !important; color: var(--muted) !important; font-size: 10px; }
+.leaflet-control-attribution a { color: var(--fg) !important; }
+.leaflet-bar a { background: var(--surface) !important; color: var(--fg) !important; border-color: var(--line) !important; }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--surface); color: var(--fg); }
+.leaflet-popup-content { margin: 12px 14px; font: 14px/1.4 var(--f-body); }
+aside {
+  background: var(--surface); border-left: 1px solid var(--line); overflow-y: auto; min-width: 0;
+  padding-block: 14px 24px;
+  padding-left: 16px;
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 14px;
+}
+.summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.sum { border-radius: 10px; padding: 8px 6px; text-align: center; background: var(--bg); }
+.sum b { display: block; font: 700 24px/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.sum span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.sum.l3 b { color: var(--lv3); } .sum.l2 b { color: var(--lv2); } .sum.l1 b { color: var(--lv1-ink); } .sum.l0 b { color: var(--ok); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn {
+  border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 10px;
+  padding: 9px 12px; font: 600 14px/1 var(--f-body); cursor: pointer;
+}
+.btn.primary { background: var(--fg); color: var(--surface); border-color: var(--fg); }
+.btn:focus-visible, .item:focus-visible { outline: 3px solid var(--lv2); outline-offset: 2px; }
+h2 { font: 700 15px/1.2 var(--f-display); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 6px 0 0; }
+.list { display: grid; gap: 6px; }
+.item {
+  display: grid; grid-template-columns: 6px 1fr auto; gap: 10px; align-items: center; text-align: left;
+  background: var(--bg); border: 0; border-radius: 10px; padding: 9px 10px 9px 0; cursor: pointer; color: var(--fg); width: 100%;
+  font: 14px/1.35 var(--f-body);
+}
+.item .stripe { align-self: stretch; border-radius: 10px 0 0 10px; }
+.item .where { font-weight: 600; }
+.item .what { color: var(--muted); font-size: 13px; }
+.item .tag { font: 700 12px/1 var(--f-display); padding: 5px 7px; border-radius: 6px; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
+.l1 .stripe, .tag.l1 { background: var(--lv1); } .tag.l1 { color: #3B2F00; }
+.l2 .stripe, .tag.l2 { background: var(--lv2); } .tag.l2 { color: #2B1300; }
+.l3 .stripe, .tag.l3 { background: var(--lv3); } .tag.l3 { color: #fff; }
+.empty { background: var(--bg); border-radius: 10px; padding: 12px; color: var(--muted); font-size: 14px; }
+.empty b { color: var(--ok); }
+.note { font-size: 12px; color: var(--muted); margin: 0; }
+.note a { color: inherit; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 18px; height: 5px; border-radius: 3px; vertical-align: middle; margin-right: 5px; }
+.dist { font-variant-numeric: tabular-nums; text-transform: none; }
+@media (max-width: 820px) {
+  main { grid-template-columns: 1fr; grid-template-rows: 1fr minmax(0, 46%); }
+  aside { border-left: 0; border-top: 1px solid var(--line); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
+  .upd { width: 100%; text-align: left; margin-left: 0; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="brand">
+      <svg width="38" height="34" viewBox="0 0 38 34" aria-hidden="true"><path d="M19 2 L36 32 H2 Z" fill="#fff" stroke="#D7191C" stroke-width="3.5" stroke-linejoin="round"/><rect x="17.4" y="11" width="3.2" height="11" rx="1.2" fill="#14171C"/><circle cx="19" cy="26.2" r="1.9" fill="#14171C"/></svg>
+      <div><h1>Avtoban Alert BG</h1><small>Мъгла, вятър, сняг и поледица по магистралите</small></div>
+    </div>
+    <div class="upd" id="upd" role="status">Зареждане…</div>
+  </div>
+</header>
+<main>
+  <div id="map" role="region" aria-label="Карта на магистралите"></div>
+  <aside>
+    <div class="summary" id="summary"></div>
+    <div class="row">
+      <button class="btn primary" id="b-near">Опасности около мен</button>
+      <button class="btn" id="b-all">Цяла България</button>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--ok)"></i>Нормално</span>
+      <span><i style="background:var(--lv1)"></i>Внимание</span>
+      <span><i style="background:var(--lv2)"></i>Опасно</span>
+      <span><i style="background:var(--lv3)"></i>Много опасно</span>
+    </div>
+    <h2 id="h-list">Участъци с опасност · сега и до 3 часа</h2>
+    <div class="list" id="list"></div>
+    <h2>Официални предупреждения (НИМХ)</h2>
+    <div class="list" id="warn"></div>
+    <p class="note">Прогнозни данни, изчислени за всеки участък от около 8 km. Не заместват указанията на полицията и АПИ. При произшествие: <b>112</b>.</p>
+    <p class="note">Време: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0) · Предупреждения: <a href="https://meteoalarm.org/" target="_blank" rel="noopener">Meteoalarm</a> / НИМХ · Пътища: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></p>
+  </aside>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+"use strict";
+var TYPES = {
+  fog:   { name: "Мъгла",      fmt: function (v) { return "видимост " + v + " m"; } },
+  wind:  { name: "Силен вятър", fmt: function (v) { return "пориви до " + v + " km/h"; } },
+  snow:  { name: "Снеговалеж", fmt: function (v) { return v + " cm/h"; } },
+  ice:   { name: "Поледица",   fmt: function (v) { return "валежи при " + v + " °C"; } },
+  rain:  { name: "Силен дъжд", fmt: function (v) { return v + " mm/h"; } },
+  storm: { name: "Гръмотевична буря", fmt: function () { return ""; } }
+};
+var LV = ["Нормално", "Внимание", "Опасно", "Много опасно"];
+var shown = [], map, roads = null, haz = null, pts = {}, lines = [], userPos = null, userMark = null;
+
+function css(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+function color(lv) { return lv ? css("--lv" + lv) : css("--ok"); }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+function km(a, b, c, d) {
+  var r = Math.PI / 180, x = (c - a) * r, y = (d - b) * r;
+  var h = Math.sin(x / 2) * Math.sin(x / 2) + Math.cos(a * r) * Math.cos(c * r) * Math.sin(y / 2) * Math.sin(y / 2);
+  return 12742 * Math.asin(Math.sqrt(h));
+}
+function hhmm(t) { return t ? t.slice(11, 16) : ""; }
+function level(id) { var h = haz && haz.points[id]; return h && h.length ? h[0].level : 0; }
+function describe(id) {
+  return (haz.points[id] || []).map(function (h) {
+    var tp = TYPES[h.type] || { name: h.type, fmt: function () { return ""; } };
+    return tp.name + " – " + tp.fmt(h.value) + (h.at ? " (" + hhmm(h.at) + " ч.)" : "");
+  });
+}
+function label(p) { return p.ref.replace("A", "А") + " „" + p.name + "“" + (p.near ? " край " + p.near : ""); }
+
+function drawRoads() {
+  lines.forEach(function (l) { map.removeLayer(l); });
+  lines = roads.segments.map(function (s) {
+    var lv = level(s.p);
+    var pl = L.polyline(s.c, { color: color(lv), weight: lv ? 7 : 4, opacity: 1, lineCap: "butt", lineJoin: "round" });
+    pl.on("click", function (e) { popup(s.p, e.latlng); });
+    return pl.addTo(map);
+  });
+  lines.forEach(function (l) { if (l.options.weight > 4) l.bringToFront(); });
+}
+function popup(id, at) {
+  var p = pts[id], lv = level(id), d = describe(id);
+  L.popup().setLatLng(at || [p.lat, p.lon]).setContent(
+    "<b>" + esc(label(p)) + "</b><br>" +
+    (lv ? '<span class="tag l' + lv + '" style="display:inline-block;margin:6px 0">' + LV[lv] + "</span><br>" + d.map(esc).join("<br>")
+        : "Няма опасност по прогнозата до 3 часа.")
+  ).openOn(map);
+}
+function render() {
+  var ids = Object.keys(haz.points).filter(function (id) { return pts[id]; });
+  var c = [0, 0, 0, 0];
+  roads.points.forEach(function (p) { c[level(p.id)]++; });
+  document.getElementById("summary").innerHTML = [3, 2, 1, 0].map(function (lv) {
+    return '<div class="sum l' + lv + '"><b>' + c[lv] + "</b><span>" + LV[lv] + "</span></div>";
+  }).join("");
+  var gs = groups(ids);
+  gs.sort(function (a, b) {
+    if (userPos) return gdist(a) - gdist(b);
+    return b.lv - a.lv || a.ids[0].localeCompare(b.ids[0], "en", { numeric: true });
+  });
+  var list = document.getElementById("list");
+  if (!gs.length) {
+    list.innerHTML = '<div class="empty"><b>Няма опасности</b> по магистралите сега и в следващите 3 часа.</div>';
+  } else {
+    list.innerHTML = gs.slice(0, 60).map(function (g, i) {
+      var len = g.ids.length > 1 ? " · ~" + glen(g) + " km" : "";
+      return '<button class="item l' + g.lv + '" data-g="' + i + '"><span class="stripe"></span><span><span class="where">' + esc(glabel(g)) +
+        "</span><br><span class=\"what\">" + esc(g.txt + len) + "</span></span>" +
+        '<span class="tag l' + g.lv + '">' + (userPos ? '<span class="dist">' + Math.round(gdist(g)) + " km</span>" : LV[g.lv]) + "</span></button>";
+    }).join("");
+  }
+  shown = gs;
+  var w = haz.warnings, wl = document.getElementById("warn");
+  if (w === null) wl.innerHTML = '<div class="empty">Официалните предупреждения не са достъпни в момента.</div>';
+  else if (!w.length) wl.innerHTML = '<div class="empty"><b>Няма</b> активни предупреждения от НИМХ.</div>';
+  else wl.innerHTML = w.map(function (x) {
+    return '<div class="item l' + x.level + '" style="cursor:default"><span class="stripe"></span><span><span class="where">' + esc(x.area) +
+      '</span><br><span class="what">' + esc(x.event) + (x.to ? " · до " + esc(x.to.slice(8, 10) + "." + x.to.slice(5, 7) + " " + x.to.slice(11, 16)) : "") +
+      '</span></span><span class="tag l' + x.level + '">' + LV[x.level] + "</span></div>";
+  }).join("");
+  drawRoads();
+  stamp();
+}
+function idx(id) { return +id.split("-")[1]; }
+function groups(ids) {
+  // join neighbouring sections of the same motorway that have the same warning text
+  ids = ids.slice().sort(function (a, b) { return a.localeCompare(b, "en", { numeric: true }); });
+  var out = [], cur = null;
+  ids.forEach(function (id) {
+    var p = pts[id], txt = describe(id).join(" · "), lv = level(id);
+    if (cur && cur.ref === p.ref && idx(id) - idx(cur.ids[cur.ids.length - 1]) <= 1 && cur.txt === txt && cur.lv === lv) cur.ids.push(id);
+    else { cur = { ref: p.ref, txt: txt, lv: lv, ids: [id] }; out.push(cur); }
+  });
+  return out;
+}
+function glabel(g) {
+  var a = pts[g.ids[0]], b = pts[g.ids[g.ids.length - 1]];
+  var where = !a.near || !b.near || a.near === b.near ? ((a.near || b.near) ? " край " + (a.near || b.near) : "") : " между " + a.near + " и " + b.near;
+  return a.ref.replace("A", "А") + " „" + a.name + "“" + where;
+}
+function glen(g) {
+  var t = 0;
+  for (var i = 1; i < g.ids.length; i++) { var a = pts[g.ids[i - 1]], b = pts[g.ids[i]]; t += km(a.lat, a.lon, b.lat, b.lon); }
+  return Math.max(5, Math.round((t + 5) / 5) * 5);
+}
+function gdist(g) { return Math.min.apply(null, g.ids.map(dist)); }
+function dist(id) { var p = pts[id]; return km(userPos[0], userPos[1], p.lat, p.lon); }
+function stamp() {
+  var el = document.getElementById("upd");
+  if (!haz) return;
+  var t = new Date(haz.updated), min = Math.round((Date.now() - t) / 60000);
+  el.className = "upd" + (min > 75 ? " stale" : "");
+  el.innerHTML = "Обновено <b>" + t.toLocaleTimeString("bg-BG", { hour: "2-digit", minute: "2-digit" }) + "</b> (преди " + Math.max(0, min) + " мин.) · " + haz.checked + " участъка";
+}
+function load() {
+  return Promise.all([
+    roads ? roads : fetch("roads.json").then(function (r) { return r.json(); }),
+    fetch("hazards.json?t=" + Date.now()).then(function (r) { return r.json(); })
+  ]).then(function (res) {
+    if (!roads) { roads = res[0]; roads.points.forEach(function (p) { pts[p.id] = p; }); }
+    haz = res[1];
+    render();
+  }).catch(function () {
+    document.getElementById("upd").innerHTML = "<b>Данните не се заредиха.</b> Проверете интернета.";
+  });
+}
+function start() {
+  map = L.map("map", { zoomControl: true }).setView([42.6, 25.3], 7);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
+  document.getElementById("list").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-g]"); if (!b) return;
+    var g = shown[+b.getAttribute("data-g")];
+    var bb = L.latLngBounds(g.ids.map(function (id) { return [pts[id].lat, pts[id].lon]; }));
+    map.fitBounds(bb.pad(0.4), { maxZoom: 11 });
+    popup(g.ids[0]);
+  });
+  document.getElementById("b-all").addEventListener("click", function () {
+    userPos = null; if (userMark) { map.removeLayer(userMark); userMark = null; }
+    document.getElementById("h-list").textContent = "Участъци с опасност · сега и до 3 часа";
+    map.setView([42.6, 25.3], 7); if (haz) render();
+  });
+  document.getElementById("b-near").addEventListener("click", function () {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      userPos = [pos.coords.latitude, pos.coords.longitude];
+      if (userMark) map.removeLayer(userMark);
+      userMark = L.circleMarker(userPos, { radius: 8, color: "#fff", weight: 3, fillColor: "#1E66F5", fillOpacity: 1 }).addTo(map);
+      map.setView(userPos, 9);
+      document.getElementById("h-list").textContent = "Опасности по близост до вас";
+      if (haz) render();
+    }, function () {
+      document.getElementById("upd").innerHTML = "<b>Няма достъп до местоположението.</b> Разрешете го в браузъра.";
+    }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 120000 });
+  });
+  load();
+  setInterval(load, 5 * 60000);
+  setInterval(stamp, 60000);
+}
+document.addEventListener("DOMContentLoaded", start);
+</script>
+</body>
+</html>
