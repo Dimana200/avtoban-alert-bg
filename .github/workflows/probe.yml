@@ -5,11 +5,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          UA="Mozilla/5.0 (avtoban-alert-bg; https://github.com/Dimana200/avtoban-alert-bg)"
-          curl -4 -sL -A "$UA" -m 40 -o t.html -w "traffic %{http_code} %{content_type} %{size_download}\n" https://traffic.api.bg/ || echo "curl failed $?"
-          touch t.html; head -c 3000 t.html; echo
-          for js in $(grep -oE '(src|href)="[^"]+\.(js|json)[^"]*"' t.html | sed -E 's/^(src|href)="//; s/"$//'); do
-            case "$js" in http*) u="$js";; /*) u="https://traffic.api.bg$js";; *) u="https://traffic.api.bg/$js";; esac
-            echo "=== $u"; curl -4 -sL -A "$UA" -m 40 -o b.js "$u" -w "%{http_code} %{size_download}\n" || true
-            grep -oE '"(/[a-zA-Z0-9_./-]*(api|events|incident|restriction|geojson|layers|data)[a-zA-Z0-9_./?=-]*)"|https?://[a-zA-Z0-9.-]+(/[a-zA-Z0-9_./?=-]*)?' b.js | sort -u | head -60
-          done
+          python3 - <<'PY'
+          import re, urllib.request, html
+          UA = {"User-Agent": "Mozilla/5.0 (avtoban-alert-bg; https://github.com/Dimana200/avtoban-alert-bg)"}
+          def get(u):
+              return urllib.request.urlopen(urllib.request.Request(u, headers=UA), timeout=40).read().decode("utf-8", "replace")
+          found = []
+          for base in ["https://www.bta.bg/bg/news/bulgaria/oficial-messages/national", "https://www.bta.bg/bg/news/bulgaria/oficial-messages"]:
+              for page in range(1, 9):
+                  try: s = get(base + ("?page=%d" % page if page > 1 else ""))
+                  except Exception as e: print("ERR", base, page, e); continue
+                  links = sorted(set(re.findall(r'href="(/bg/news/bulgaria/oficial-messages/[^"]+)"', s)))
+                  api = [l for l in links if re.search(r"/\d+-api-", l)]
+                  print(base[-12:], page, "links", len(links), "api", api)
+                  found += api
+          found = sorted(set(found))
+          print("API bulletins:", found)
+          if found:
+              s = get("https://www.bta.bg" + found[-1])
+              body = re.sub(r"<script.*?</script>|<style.*?</style>", " ", s, flags=re.S)
+              txt = re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "\n", body)))
+              i = txt.find("АПИ")
+              print("TEXT:", txt[i:i+4000])
+          PY
