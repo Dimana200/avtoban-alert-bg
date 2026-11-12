@@ -43,8 +43,16 @@ def parse(page):
         name = cells[0].strip()
         if name not in STATIONS:
             continue
-        wind = re.match(r"\d+", cells[5] or "")
-        out[name] = {"date": cells[1], "hour": cells[2], "phen": cells[4].lower(), "wind_ms": int(wind.group(0)) if wind else None}
+        # find the columns by their content, not their position (the table has extra icon cells)
+        di = next((i for i, c in enumerate(cells) if re.fullmatch(r"\d{2}\.\d{2}\.\d{4}", c)), None)
+        pi = next((i for i, c in enumerate(cells[1:], 1) if re.search(r"[а-яА-Я]{3}", c) and c != name), None)
+        if di is None or pi is None:
+            continue
+        hour = re.match(r"\d{1,2}", cells[di + 1] or "")
+        wind = next((int(c) for c in cells[pi + 1:] if re.fullmatch(r"\d{1,2}", c)), None)
+        out[name] = {"date": cells[di], "hour": hour.group(0) if hour else "", "phen": cells[pi].lower(), "wind_ms": wind}
+        if len(out) == 1:
+            print("first row cells:", cells, flush=True)
     return out
 
 
