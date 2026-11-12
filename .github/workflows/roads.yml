@@ -20,7 +20,7 @@ jobs:
         run: |
           git config user.name "avtoban-alert-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add site/roads.json site/speed
+          git add -A site/roads.json $(test -d site/speed && echo site/speed)
           git diff --cached --quiet && echo "no changes" && exit 0
           git commit -m "Update motorway sections $(date -u +%F)"
           git push
