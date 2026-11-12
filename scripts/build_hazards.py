@@ -129,13 +129,25 @@ def main():
     pts = roads["points"]
     res = weather(pts)
     from common import km
-    for icao, (name, lat, lon, v) in measured_fog().items():
-        lv = 3 if v < 200 else 2
+    import nimh
+    measured = [(name, lat, lon, "fogobs", 3 if v < 200 else 2, {"v": v, "s": name})
+                for name, lat, lon, v in measured_fog().values()]
+    try:
+        measured += [(n, la, lo, t, lv, {"v": None, "s": txt}) for n, la, lo, t, lv, txt in nimh.hazards(nimh.fetch())]
+    except Exception as e:  # noqa: BLE001 - observations are a bonus, never block the forecast
+        print("NIMH observations unavailable:", e)
+    replaces = {"fogobs": "fog", "snowobs": "snow", "iceobs": "ice", "windobs": "wind"}
+    for name, lat, lon, typ, lv, val in measured:
         for p in pts:
-            if km((p["lat"], p["lon"]), (lat, lon)) <= OBS_RADIUS_KM:
-                cur = [h for h in res.get(p["id"], []) if h["type"] != "fog"]
-                res[p["id"]] = sorted(cur + [{"type": "fogobs", "level": lv, "value": {"v": v, "s": name}, "at": None}],
-                                      key=lambda x: -x["level"])
+            if km((p["lat"], p["lon"]), (lat, lon)) > OBS_RADIUS_KM:
+                continue
+            cur = res.get(p["id"], [])
+            same = [h for h in cur if h["type"] == typ]
+            if same and same[0]["level"] >= lv:
+                continue                                   # a closer/stronger measurement is already there
+            cur = [h for h in cur if h["type"] not in (typ, replaces[typ])]
+            res[p["id"]] = sorted(cur + [{"type": typ, "level": lv, "value": val, "at": None}], key=lambda x: -x["level"])
+    print("measured hazards:", [(m[0], m[3], m[4]) for m in measured])
     out = {"updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
            "points": {k: v for k, v in res.items() if v}, "checked": len(res), "warnings": warnings()}
     json.dump(out, open(os.path.join(ROOT, "hazards.json"), "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
