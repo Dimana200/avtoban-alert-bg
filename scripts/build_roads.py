@@ -24,7 +24,7 @@ QUERIES = [
     AREA + 'way["highway"~"^(motorway|trunk|primary)$"](area.a);out geom tags;',
     AREA + 'way["highway"="secondary"]["ref"](area.a);out geom tags;',
     AREA + 'way["highway"="tertiary"]["ref"](area.a);out geom tags;',
-    AREA + 'node["place"~"^(city|town|village)$"](area.a);out tags;',
+    AREA + 'node["place"~"^(city|town|village)$"](area.a);out;',
 ]
 LAT2LATIN = str.maketrans({"А": "A", "І": "I", "Ӏ": "I"})
 
