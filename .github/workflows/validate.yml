@@ -8,3 +8,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: cd scripts && python3 validate.py
+      - run: cd scripts && python3 validate_month.py
