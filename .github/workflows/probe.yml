@@ -5,14 +5,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          UA="avtoban-alert-bg/1.0 (https://github.com/Dimana200/avtoban-alert-bg)"
-          for u in https://www.bta.bg/bg/news/bulgaria/oficial-messages https://api.bg/ http://www.api.bg/ https://www.api.bg/index.php/bg/; do
-            echo "=== $u"; curl -4 -sL -A "$UA" -m 40 -o page.html -w "%{http_code} %{url_effective}\n" "$u" || echo "curl failed $?"; touch page.html
+          UA="Mozilla/5.0 (avtoban-alert-bg; https://github.com/Dimana200/avtoban-alert-bg)"
+          for u in https://www.bta.bg/bg/news/bulgaria/oficial-messages "https://www.bta.bg/bg/search?q=%D0%90%D0%9F%D0%98+%D1%81%D1%8A%D1%81%D1%82%D0%BE%D1%8F%D0%BD%D0%B8%D0%B5%D1%82%D0%BE+%D0%BD%D0%B0+%D1%80%D0%B5%D0%BF%D1%83%D0%B1%D0%BB%D0%B8%D0%BA%D0%B0%D0%BD%D1%81%D0%BA%D0%B8%D1%82%D0%B5+%D0%BF%D1%8A%D1%82%D0%B8%D1%89%D0%B0" https://www.bta.bg/bg/rss https://www.bta.bg/bg/rss/oficial-messages; do
+            echo "=== $u"; curl -4 -sL -A "$UA" -m 40 -o page.html -w "%{http_code} %{content_type} %{size_download}\n" "$u" || echo "curl failed $?"; touch page.html
             python3 - <<'PY'
-          import re,html
+          import re
           s=open('page.html',encoding='utf-8',errors='replace').read()
-          for href,t in re.findall(r'<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>',s,re.S):
-              t=re.sub(r'<[^>]+>|\s+',' ',html.unescape(t)).strip()
-              if re.search(r'пътищ|АПИ|обстановк|ограничен|ПТП',t): print(href,'|',t[:120])
+          print('АПИ count', s.count('АПИ'), 'пътища', s.count('пътищ'))
+          for m in sorted(set(re.findall(r'(?:href="|<link>)([^"<]*oficial-messages[^"<]*)', s)))[:25]: print('LINK', m)
+          for m in re.finditer(r'.{0,80}АПИ.{0,120}', s): print('CTX', m.group(0).replace('\n',' ')[:200])
           PY
           done
