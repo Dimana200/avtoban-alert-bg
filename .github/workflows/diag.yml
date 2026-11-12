@@ -1,0 +1,10 @@
+name: Diag firestore read
+on: workflow_dispatch
+jobs:
+  d:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          curl -sS -i -X POST -H "Content-Type: application/json" -H "Origin: https://dimana200.github.io" \
+            -d '{"structuredQuery":{"from":[{"collectionId":"reports"}],"where":{"fieldFilter":{"field":{"fieldPath":"exp"},"op":"GREATER_THAN","value":{"timestampValue":"2026-01-01T00:00:00Z"}}},"limit":3}}' \
+            "https://firestore.googleapis.com/v1/projects/avtoban-alert-bg/databases/(default)/documents:runQuery" | head -30

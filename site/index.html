@@ -114,6 +114,8 @@ h2 { font: 700 15px/1.2 var(--f-display); text-transform: uppercase; letter-spac
 .legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; color: var(--muted); }
 .legend i { display: inline-block; width: 18px; height: 5px; border-radius: 3px; vertical-align: middle; margin-right: 5px; }
 .dist { font-variant-numeric: tabular-nums; text-transform: none; }
+html.app header, html.app aside { display: none; }
+html.app main { grid-template-columns: 1fr; grid-template-rows: 1fr; }
 .chip { border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 999px; padding: 6px 11px; font: 600 13px/1 var(--f-body); cursor: pointer; }
 .chip[aria-pressed="false"] { opacity: .45; text-decoration: line-through; }
 .chip:focus-visible { outline: 3px solid var(--lv2); outline-offset: 2px; }
@@ -153,6 +155,7 @@ h2 { font: 700 15px/1.2 var(--f-display); text-transform: uppercase; letter-spac
       <span><i style="background:var(--lv1)"></i>Внимание</span>
       <span><i style="background:var(--lv2)"></i>Опасно</span>
       <span><i style="background:var(--lv3)"></i>Много опасно</span>
+      <span><i style="background:#7B2FF7;border-radius:50%;width:10px;height:10px"></i>Сигнал от шофьор</span>
     </div>
     <h2 id="h-list">Участъци с опасност · сега и до 3 часа</h2>
     <div class="list" id="list"></div>
@@ -316,6 +319,46 @@ function load() {
     document.getElementById("upd").innerHTML = "<b>Данните не се заредиха.</b> Проверете интернета.";
   });
 }
+var REPORT_NAMES = { accident: "Катастрофа", stranded: "Закъсал автомобил", fog: "Мъгла", wind: "Силен вятър", rocks: "Падащи камъни", camera: "Мобилна камера" };
+var REPORT_LETTER = { accident: "!", stranded: "А", fog: "М", wind: "В", rocks: "К", camera: "📷" };
+var reportLayer = null;
+function loadReports() {
+  // driver reports from Firestore (public read, no key needed); only the ones still valid
+  var body = { structuredQuery: { from: [{ collectionId: "reports" }],
+    where: { fieldFilter: { field: { fieldPath: "exp" }, op: "GREATER_THAN", value: { timestampValue: new Date().toISOString() } } }, limit: 500 } };
+  return fetch("https://firestore.googleapis.com/v1/projects/avtoban-alert-bg/databases/(default)/documents:runQuery", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+  }).then(function (r) { return r.json(); }).then(function (rows) {
+    if (reportLayer) map.removeLayer(reportLayer);
+    reportLayer = L.layerGroup().addTo(map);
+    (rows || []).forEach(function (row) {
+      var d = row.document; if (!d) return;
+      var f = d.fields, num = function (x) { return x ? +(x.doubleValue || x.integerValue || 0) : 0; };
+      var t = f.t && f.t.stringValue, up = num(f.up), down = num(f.down);
+      if (!REPORT_NAMES[t] || (down >= 2 && down > up)) return;
+      var exp = new Date(f.exp.timestampValue);
+      var icon = L.divIcon({ className: "", iconSize: [30, 30], iconAnchor: [15, 15],
+        html: '<div style="width:30px;height:30px;border-radius:50%;background:#7B2FF7;color:#fff;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font:700 14px/1 var(--f-display);box-shadow:0 2px 6px rgba(0,0,0,.4)">' + REPORT_LETTER[t] + "</div>" });
+      L.marker([num(f.lat), num(f.lon)], { icon: icon }).addTo(reportLayer)
+        .bindPopup("<b>Сигнал от шофьор: " + esc(REPORT_NAMES[t]) + "</b><br>Потвърдили: " + up + " · Няма го: " + down +
+          "<br>Валиден до " + exp.toLocaleTimeString("bg-BG", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Sofia" }) + " ч.");
+    });
+  }).catch(function () { /* reports are optional */ });
+}
+var meMark = null, follow = true;
+function appMode() {
+  document.documentElement.classList.add("app");
+  setTimeout(function () { map.invalidateSize(); }, 50);
+  map.on("dragstart", function () { follow = false; });
+  if (navigator.geolocation) navigator.geolocation.watchPosition(function (pos) {
+    var p = [pos.coords.latitude, pos.coords.longitude];
+    if (!meMark) {
+      meMark = L.circleMarker(p, { radius: 9, color: "#fff", weight: 3, fillColor: "#1E66F5", fillOpacity: 1 }).addTo(map);
+      map.setView(p, 10);
+    } else meMark.setLatLng(p);
+    if (follow) map.panTo(p, { animate: true });
+  }, function () {}, { enableHighAccuracy: true, maximumAge: 5000 });
+}
 function start() {
   canvas = L.canvas({ padding: 0.3, tolerance: 6 });
   map = L.map("map", { zoomControl: true, preferCanvas: true }).setView([42.7, 25.3], 7);
@@ -353,8 +396,11 @@ function start() {
       document.getElementById("upd").innerHTML = "<b>Няма достъп до местоположението.</b> Разрешете го в браузъра.";
     }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 120000 });
   });
+  if (/[?&]app=1/.test(location.search)) appMode();
   load();
+  loadReports();
   setInterval(load, 10 * 60000);
+  setInterval(loadReports, 60000);
   setInterval(stamp, 60000);
 }
 document.addEventListener("DOMContentLoaded", start);
