@@ -6,13 +6,10 @@ jobs:
     steps:
       - run: |
           UA="Mozilla/5.0 (avtoban-alert-bg; https://github.com/Dimana200/avtoban-alert-bg)"
-          for u in https://www.bta.bg/bg/news/bulgaria/oficial-messages "https://www.bta.bg/bg/search?q=%D0%90%D0%9F%D0%98+%D1%81%D1%8A%D1%81%D1%82%D0%BE%D1%8F%D0%BD%D0%B8%D0%B5%D1%82%D0%BE+%D0%BD%D0%B0+%D1%80%D0%B5%D0%BF%D1%83%D0%B1%D0%BB%D0%B8%D0%BA%D0%B0%D0%BD%D1%81%D0%BA%D0%B8%D1%82%D0%B5+%D0%BF%D1%8A%D1%82%D0%B8%D1%89%D0%B0" https://www.bta.bg/bg/rss https://www.bta.bg/bg/rss/oficial-messages; do
-            echo "=== $u"; curl -4 -sL -A "$UA" -m 40 -o page.html -w "%{http_code} %{content_type} %{size_download}\n" "$u" || echo "curl failed $?"; touch page.html
-            python3 - <<'PY'
-          import re
-          s=open('page.html',encoding='utf-8',errors='replace').read()
-          print('АПИ count', s.count('АПИ'), 'пътища', s.count('пътищ'))
-          for m in sorted(set(re.findall(r'(?:href="|<link>)([^"<]*oficial-messages[^"<]*)', s)))[:25]: print('LINK', m)
-          for m in re.finditer(r'.{0,80}АПИ.{0,120}', s): print('CTX', m.group(0).replace('\n',' ')[:200])
-          PY
+          curl -4 -sL -A "$UA" -m 40 -o t.html -w "traffic %{http_code} %{content_type} %{size_download}\n" https://traffic.api.bg/ || echo "curl failed $?"
+          touch t.html; head -c 3000 t.html; echo
+          for js in $(grep -oE '(src|href)="[^"]+\.(js|json)[^"]*"' t.html | sed -E 's/^(src|href)="//; s/"$//'); do
+            case "$js" in http*) u="$js";; /*) u="https://traffic.api.bg$js";; *) u="https://traffic.api.bg/$js";; esac
+            echo "=== $u"; curl -4 -sL -A "$UA" -m 40 -o b.js "$u" -w "%{http_code} %{size_download}\n" || true
+            grep -oE '"(/[a-zA-Z0-9_./-]*(api|events|incident|restriction|geojson|layers|data)[a-zA-Z0-9_./?=-]*)"|https?://[a-zA-Z0-9.-]+(/[a-zA-Z0-9_./?=-]*)?' b.js | sort -u | head -60
           done
