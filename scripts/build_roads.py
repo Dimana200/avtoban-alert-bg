@@ -10,7 +10,7 @@ Writes site/roads.json:
   segments: [{p, r, k, c: [[lat, lon], ...]}]     drawable pieces: cell id, road ref, class, coords
 Classes: 0 motorway, 1 first class, 2 second class, 3 third class.
 """
-import json, math, os, re, sys
+import json, math, os, re, sys, time
 from collections import defaultdict
 from common import http, km
 
@@ -166,14 +166,17 @@ def build(elements):
 
 
 def fetch(q):
-    for ep in OVERPASS:
-        try:
-            js = http(ep, {"data": "[out:json][timeout:400];" + q}, timeout=480, tries=2)
-            if re.search(r"error|timed out|out of memory", js.get("remark", ""), re.I):
-                raise RuntimeError(js["remark"])
-            return js.get("elements", [])
-        except Exception as e:  # noqa: BLE001
-            print("   failed", ep, e, flush=True)
+    # the public servers are often busy for a few minutes: several rounds with growing pauses
+    for rnd in range(4):
+        for ep in OVERPASS:
+            try:
+                js = http(ep, {"data": "[out:json][timeout:400];" + q}, timeout=480, tries=1)
+                if re.search(r"error|timed out|out of memory", js.get("remark", ""), re.I):
+                    raise RuntimeError(js["remark"])
+                return js.get("elements", [])
+            except Exception as e:  # noqa: BLE001
+                print("   failed", ep, e, flush=True)
+        time.sleep(60 * (rnd + 1))
     raise RuntimeError("all Overpass servers failed")
 
 
