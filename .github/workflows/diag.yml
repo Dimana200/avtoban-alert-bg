@@ -1,0 +1,27 @@
+name: Diag speed limits
+on: workflow_dispatch
+jobs:
+  d:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          python3 - <<'PY'
+          import json,socket,time,urllib.request,urllib.parse,collections
+          g=socket.getaddrinfo; socket.getaddrinfo=lambda h,p,f=0,*a,**k: g(h,p,socket.AF_INET,*a,**k)
+          A='[out:json][timeout:600];area["ISO3166-1"="BG"][admin_level=2]->.a;'
+          def q(s):
+            for i in range(5):
+              try:
+                r=urllib.request.urlopen(urllib.request.Request("https://overpass-api.de/api/interpreter",data=urllib.parse.urlencode({"data":A+s}).encode(),headers={"User-Agent":"avtoban-alert-bg/1.0"}),timeout=700)
+                return json.load(r)
+              except Exception as e: print("retry",e); time.sleep(60)
+          for name,s in [("numbered roads","way[highway~\"^(motorway|trunk|primary|secondary|tertiary)$\"][ref](area.a);out tags;"),
+                         ("all drivable roads","way[highway~\"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|motorway_link|trunk_link|primary_link|secondary_link)$\"](area.a);out tags;")]:
+            d=q(s); e=d["elements"]
+            c=collections.Counter((x["tags"]["highway"], "maxspeed" in x["tags"]) for x in e)
+            vals=collections.Counter(x["tags"].get("maxspeed") for x in e if "maxspeed" in x["tags"])
+            print(f"== {name}: ways {len(e)}, with maxspeed {sum(1 for x in e if 'maxspeed' in x['tags'])}")
+            for hw in sorted({k[0] for k in c}): print("  ",hw, "with", c[(hw,True)], "without", c[(hw,False)])
+            print("   values:", vals.most_common(12))
+            time.sleep(30)
+          PY
