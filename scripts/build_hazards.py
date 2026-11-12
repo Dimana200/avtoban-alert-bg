@@ -105,11 +105,11 @@ OBS_RADIUS_KM = 25
 
 
 def measured_fog():
-    """Latest airport visibility (METAR, last 90 min) under 1000 m -> {icao: (name, lat, lon, metres, time)}."""
+    """Latest airport visibility (METAR, newest report of the last 2 hours) under 1000 m -> {icao: (name, lat, lon, metres, time)}."""
     from validate import metar_vis
     try:
         js = http("https://aviationweather.gov/api/data/metar?" + urllib.parse.urlencode(
-            {"ids": ",".join(AIRPORTS), "hours": 1.5, "format": "json"}), timeout=60)
+            {"ids": ",".join(AIRPORTS), "hours": 2, "format": "json"}), timeout=60)
     except Exception as e:  # noqa: BLE001
         print("airport observations unavailable:", e)
         return {}
