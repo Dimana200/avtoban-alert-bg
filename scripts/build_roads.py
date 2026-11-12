@@ -25,8 +25,8 @@ QUERIES = [
     AREA + 'way["highway"="secondary"]["ref"](area.a);out geom tags;',
     AREA + 'way["highway"="tertiary"]["ref"](area.a);out geom tags;',
     AREA + 'node["place"~"^(city|town|village)$"](area.a);out;',
-    AREA + 'rel["boundary"="administrative"]["admin_level"="6"](area.a);out geom;',   # municipalities
 ]
+MUNI_IDS = AREA + 'rel["boundary"="administrative"]["admin_level"="6"](area.a);out ids;'
 LAT2LATIN = str.maketrans({"А": "A", "І": "I", "Ӏ": "I"})
 
 
@@ -217,13 +217,35 @@ def fetch(q):
     raise RuntimeError("all Overpass servers failed")
 
 
+def municipality_elements():
+    """Municipality boundaries in batches of 25 (one big query overloads the public servers)."""
+    ids = [e["id"] for e in fetch(MUNI_IDS) if e.get("type") == "relation"]
+    out = []
+    for i in range(0, len(ids), 25):
+        part = fetch("rel(id:" + ",".join(map(str, ids[i:i + 25])) + ");out geom;")
+        out += part
+        time.sleep(5)
+    print(f"municipalities: {len(out)} of {len(ids)}", flush=True)
+    return out
+
+
 def main():
     elements = []
     for q in QUERIES:
         part = fetch(q)
         print(f"query {QUERIES.index(q) + 1}: {len(part)} elements", flush=True)
         elements += part
+        time.sleep(5)
+    try:
+        elements += municipality_elements()
+    except Exception as e:  # noqa: BLE001
+        print("municipalities unavailable, reusing the previous file:", e)
     out = build(elements)
+    if os.path.exists(OUT):                      # keep municipalities from the last good build where missing
+        old = {p["id"]: p.get("m", []) for p in json.load(open(OUT, encoding="utf-8"))["points"]}
+        for p in out["points"]:
+            if not p["m"] and old.get(p["id"]):
+                p["m"] = old[p["id"]]
     by = defaultdict(int)
     for r in out["roads"]:
         by[r["cls"]] += 1
