@@ -319,8 +319,8 @@ function load() {
     document.getElementById("upd").innerHTML = "<b>Данните не се заредиха.</b> Проверете интернета.";
   });
 }
-var REPORT_NAMES = { accident: "Катастрофа", stranded: "Закъсал автомобил", fog: "Мъгла", wind: "Силен вятър", rocks: "Падащи камъни", camera: "Мобилна камера" };
-var REPORT_LETTER = { accident: "!", stranded: "А", fog: "М", wind: "В", rocks: "К", camera: "📷" };
+var REPORT_NAMES = { accident: "Катастрофа", stranded: "Закъсал автомобил", jam: "Задръстване", closed: "Затворен участък", roadworks: "Участък в ремонт", fog: "Мъгла", wind: "Силен вятър", rocks: "Падащи камъни", camera: "Мобилна камера" };
+var REPORT_LETTER = { accident: "!", stranded: "А", jam: "З", closed: "✕", roadworks: "Р", fog: "М", wind: "В", rocks: "К", camera: "📷" };
 var reportLayer = null;
 function loadReports() {
   // driver reports from Firestore (public read, no key needed); only the ones still valid
