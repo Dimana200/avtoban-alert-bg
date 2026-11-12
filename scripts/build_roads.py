@@ -26,7 +26,7 @@ QUERIES = [
     AREA + 'way["highway"="tertiary"]["ref"](area.a);out geom tags;',
     AREA + 'node["place"~"^(city|town|village)$"](area.a);out;',
 ]
-MUNI_IDS = AREA + 'rel["boundary"="administrative"]["admin_level"="6"](area.a);out ids;'
+MUNI_IDS = AREA + 'rel["boundary"="administrative"]["admin_level"="5"](area.a);out ids;   # municipalities are level 5 in Bulgaria'
 LAT2LATIN = str.maketrans({"А": "A", "І": "I", "Ӏ": "I"})
 
 
@@ -106,11 +106,11 @@ def nearest_place(places, p):
 
 
 def municipalities(elements):
-    """[(name, bbox, segments)] from admin_level 6 relations; rings need no assembling because
+    """[(name, bbox, segments)] from admin_level 5 relations (Bulgarian municipalities); rings need no assembling because
     the point-in-polygon test below just counts crossings over all boundary segments."""
     out = []
     for el in elements:
-        if el.get("type") != "relation" or el.get("tags", {}).get("admin_level") != "6":
+        if el.get("type") != "relation" or el.get("tags", {}).get("admin_level") != "5":
             continue
         segs = []
         for m in el.get("members", []):
