@@ -1,0 +1,10 @@
+name: Check forecast against airports
+on:
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: cd scripts && python3 validate.py
