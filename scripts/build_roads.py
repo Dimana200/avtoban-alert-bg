@@ -26,7 +26,7 @@ QUERIES = [
     AREA + 'way["highway"="tertiary"]["ref"](area.a);out geom tags;',
     AREA + 'node["place"~"^(city|town|village)$"](area.a);out;',
 ]
-MUNI_IDS = AREA + 'rel["boundary"="administrative"]["admin_level"="5"](area.a);out ids;   # municipalities are level 5 in Bulgaria'
+MUNI_IDS = AREA + 'rel["boundary"="administrative"]["admin_level"="5"](area.a);out ids;'   # municipalities are level 5 in Bulgaria
 LAT2LATIN = str.maketrans({"А": "A", "І": "I", "Ӏ": "I"})
 
 
