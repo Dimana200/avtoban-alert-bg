@@ -6,18 +6,20 @@ jobs:
     steps:
       - run: |
           UA="avtoban-alert-bg/1.0 (https://github.com/Dimana200/avtoban-alert-bg)"
-          for Z in d u; do
-            curl -4 -sS -A "$UA" "https://weather.bg/obshtini/index.php?z=$Z" -o p$Z.html
-            echo "== page $Z: $(wc -c < p$Z.html) bytes"
-            grep -oE '[a-zA-Z0-9_./-]*\.(svg|js|json|php)[^"'"'"' >]*' p$Z.html | sort -u | head -30
-            grep -oiE '<script[^>]*>[^<]{0,600}' p$Z.html | head -5
-          done
-          SVG=$(grep -oE 'opaasniObshtini/[^"'"'"' >]*\.svg' pd.html | head -1)
-          echo "== svg $SVG"
-          curl -4 -sS -A "$UA" "https://weather.bg/obshtini/$SVG" -o m.svg; wc -c m.svg
-          head -c 2500 m.svg; echo
-          echo "== ids sample"; grep -oE 'id="[^"]*"' m.svg | head -20
-          echo "== fills"; grep -oE 'fill[:=]"?#?[0-9a-fA-F]{3,6}' m.svg | sort | uniq -c | sort -rn | head
-          echo "== titles"; grep -oE '<title>[^<]*' m.svg | head -10
-          echo "== a sample path"; grep -m2 -oE '<path[^>]{0,400}' m.svg
-          echo "== region/fog text"; grep -oiE '.{0,200}(мъгла|fog|област).{0,200}' pd.html | head -8
+          curl -4 -sS -A "$UA" "https://weather.bg/obshtini/index.php?z=d" -o pd.html
+          curl -4 -sS -A "$UA" "https://weather.bg/obshtini/index.php?z=d&o=PDV" -o pdv.html
+          echo "== pdv bytes $(wc -c < pdv.html)"
+          python3 - <<'PY'
+          import re,html
+          for f in ("pd.html","pdv.html"):
+              s=open(f,encoding="utf-8",errors="replace").read()
+              print("=====",f)
+              i=s.find("Асеновград"); print("Асеновград at",i); print(s[max(0,i-1500):i+800] if i>0 else "")
+              sc=re.findall(r"<script[^>]*>(.*?)</script>",s,re.S)
+              print("scripts:",[len(x) for x in sc]); 
+              for x in sc[:3]: print(x[:700])
+              rows=re.findall(r"<tr[^>]*>(.*?)</tr>",s,re.S)
+              print("rows",len(rows))
+              for r in rows[:6]:
+                  t=re.sub(r"<[^>]+>"," ",r); print(" |",re.sub(r"\s+"," ",html.unescape(t))[:200], re.findall(r'(?:src|alt|title|class|bgcolor|style)="([^"]{0,60})"',r)[:8])
+          PY
