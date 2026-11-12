@@ -323,23 +323,17 @@ var REPORT_NAMES = { accident: "Катастрофа", stranded: "Закъсал
 var REPORT_LETTER = { accident: "!", stranded: "А", jam: "З", closed: "✕", roadworks: "Р", fog: "М", wind: "В", rocks: "К", camera: "📷" };
 var reportLayer = null;
 function loadReports() {
-  // driver reports from Firestore (public read, no key needed); only the ones still valid
-  var body = { structuredQuery: { from: [{ collectionId: "reports" }],
-    where: { fieldFilter: { field: { fieldPath: "exp" }, op: "GREATER_THAN", value: { timestampValue: new Date().toISOString() } } }, limit: 500 } };
-  return fetch("https://firestore.googleapis.com/v1/projects/avtoban-alert-bg/databases/(default)/documents:runQuery", {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
-  }).then(function (r) { return r.json(); }).then(function (rows) {
+  // driver reports: a small file the server refreshes every 10 minutes (the app warns live by itself)
+  return fetch("reports.json?t=" + Date.now()).then(function (r) { return r.json(); }).then(function (js) {
     if (reportLayer) map.removeLayer(reportLayer);
     reportLayer = L.layerGroup().addTo(map);
-    (rows || []).forEach(function (row) {
-      var d = row.document; if (!d) return;
-      var f = d.fields, num = function (x) { return x ? +(x.doubleValue || x.integerValue || 0) : 0; };
-      var t = f.t && f.t.stringValue, up = num(f.up), down = num(f.down);
-      if (!REPORT_NAMES[t] || (down >= 2 && down > up)) return;
-      var exp = new Date(f.exp.timestampValue);
+    (js.reports || []).forEach(function (f) {
+      var t = f.t, up = f.up || 0, down = f.down || 0;
+      var exp = new Date(f.exp);
+      if (!REPORT_NAMES[t] || exp < new Date() || (down >= 2 && down > up)) return;
       var icon = L.divIcon({ className: "", iconSize: [30, 30], iconAnchor: [15, 15],
         html: '<div style="width:30px;height:30px;border-radius:50%;background:#7B2FF7;color:#fff;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font:700 14px/1 var(--f-display);box-shadow:0 2px 6px rgba(0,0,0,.4)">' + REPORT_LETTER[t] + "</div>" });
-      L.marker([num(f.lat), num(f.lon)], { icon: icon }).addTo(reportLayer)
+      L.marker([f.lat, f.lon], { icon: icon }).addTo(reportLayer)
         .bindPopup("<b>Сигнал от шофьор: " + esc(REPORT_NAMES[t]) + "</b><br>Потвърдили: " + up + " · Няма го: " + down +
           "<br>Валиден до " + exp.toLocaleTimeString("bg-BG", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Sofia" }) + " ч.");
     });
@@ -400,7 +394,7 @@ function start() {
   load();
   loadReports();
   setInterval(load, 10 * 60000);
-  setInterval(loadReports, 60000);
+  setInterval(loadReports, 2 * 60000);
   setInterval(stamp, 60000);
 }
 document.addEventListener("DOMContentLoaded", start);

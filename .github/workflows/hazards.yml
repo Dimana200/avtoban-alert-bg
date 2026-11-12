@@ -4,14 +4,14 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: "7 * * * *"        # every hour (keeps Open-Meteo under 10 000 calls a day)
+    - cron: "*/10 * * * *"     # driver reports every 10 min; weather only once an hour (Open-Meteo limit)
 permissions:
   contents: read
   pages: write
   id-token: write
 concurrency:
   group: hazards
-  cancel-in-progress: true
+  cancel-in-progress: false   # never cancel a running weather build
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -23,8 +23,18 @@ jobs:
       - uses: actions/checkout@v4
       - name: Motorway sections (only if missing)
         run: test -f site/roads.json || (cd scripts && python3 build_roads.py)
-      - name: Weather on every section
-        run: cd scripts && python3 build_hazards.py
+      - name: Weather on every section (hourly; in between reuse the live file)
+        run: |
+          LIVE=https://dimana200.github.io/avtoban-alert-bg
+          if [ "${{ github.event_name }}" = "schedule" ] && curl -fsS "$LIVE/hazards.json" -o site/hazards.json \
+             && python3 -c "import json,sys,datetime as d; u=json.load(open('site/hazards.json'))['updated']; sys.exit((d.datetime.now(d.timezone.utc)-d.datetime.fromisoformat(u.replace('Z','+00:00'))).total_seconds()>3300)"; then
+            echo "weather is less than 55 minutes old, kept"
+          else
+            cd scripts && python3 build_hazards.py
+          fi
+      - name: Driver reports (one Firestore query for everybody)
+        run: |
+          cd scripts && python3 build_reports.py || curl -fsS https://dimana200.github.io/avtoban-alert-bg/reports.json -o ../site/reports.json || echo '{"reports":[]}' > ../site/reports.json
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
