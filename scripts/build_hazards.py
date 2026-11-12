@@ -176,6 +176,8 @@ def main():
     print("measured hazards:", [(m[0], m[3], m[4]) for m in measured])
     out = {"updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
            "points": {k: v for k, v in res.items() if v}, "checked": len(res), "warnings": warnings()}
+    byid = {p["id"]: p for p in pts}
+    out["loc"] = {k: [byid[k]["lat"], byid[k]["lon"], byid[k].get("near", "")] for k in out["points"] if k in byid}   # for the phone app
     json.dump(out, open(os.path.join(ROOT, "hazards.json"), "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
     lv = [max(h["level"] for h in v) for v in out["points"].values()]
     print(f"checked {len(res)} sections; yellow {lv.count(1)}, orange {lv.count(2)}, red {lv.count(3)}; "
