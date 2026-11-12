@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Avtoban Alert BG за Android</title>
+<meta name="description" content="Изтегляне и инсталиране на приложението Avtoban Alert BG за Android">
+<meta name="theme-color" content="#14171C">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@600;700&family=Noto+Sans:wght@400;600&display=swap">
+<style>
+:root {
+  --bg: #F1F2F4; --surface: #FFFFFF; --fg: #14171C; --muted: #5A616E; --line: #D8DBE1;
+  --ok: #2E8B57; --lv1: #F2C200; --lv2: #F07F0E; --lv3: #D7191C; --blue: #1A73E8;
+  --f-display: "Roboto Condensed", "Arial Narrow", Arial, sans-serif;
+  --f-body: "Noto Sans", "Segoe UI", Roboto, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #0F1216; --surface: #191D24; --fg: #ECEEF2; --muted: #A3AAB7; --line: #2C323C; --ok: #4CC38A; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #0F1216; --surface: #191D24; --fg: #ECEEF2; --muted: #A3AAB7; --line: #2C323C; --ok: #4CC38A; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 var(--f-body); }
+.wrap { max-width: 680px; margin: 0 auto; padding-block: calc(20px + env(safe-area-inset-top, 0px)) calc(40px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+a.back { color: var(--muted); text-decoration: none; font-size: 14px; }
+.brand { display: flex; align-items: center; gap: 12px; margin: 14px 0 6px; }
+h1 { font: 700 30px/1.05 var(--f-display); margin: 0; text-wrap: balance; }
+.lead { color: var(--muted); margin: 6px 0 20px; }
+h2 { font: 700 15px/1.2 var(--f-display); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 30px 0 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+.dl { display: block; text-align: center; background: var(--ok); color: #fff; text-decoration: none; border-radius: 14px;
+  padding: 18px; font: 700 22px/1 var(--f-display); letter-spacing: .02em; }
+.dl[aria-disabled="true"] { background: var(--line); color: var(--muted); pointer-events: none; }
+.small { font-size: 14px; color: var(--muted); margin: 10px 0 0; }
+ul.feat { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+ol.steps { margin: 0; padding: 0; list-style: none; counter-reset: s; display: grid; gap: 10px; }
+ol.steps li { counter-increment: s; position: relative; padding: 14px 14px 14px 56px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+ol.steps li::before { content: counter(s); position: absolute; left: 14px; top: 13px; width: 30px; height: 30px; border-radius: 50%;
+  background: var(--fg); color: var(--bg); display: flex; align-items: center; justify-content: center; font: 700 16px/1 var(--f-display); }
+q { quotes: "„" "“"; font-weight: 600; }
+.warn { border-left: 5px solid var(--lv2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="./">← Към картата</a>
+  <div class="brand">
+    <svg width="44" height="40" viewBox="0 0 38 34" aria-hidden="true"><path d="M19 2 L36 32 H2 Z" fill="#fff" stroke="#D7191C" stroke-width="3.5" stroke-linejoin="round"/><rect x="17.4" y="11" width="3.2" height="11" rx="1.2" fill="#14171C"/><circle cx="19" cy="26.2" r="1.9" fill="#14171C"/></svg>
+    <h1>Avtoban Alert BG за Android</h1>
+  </div>
+  <p class="lead">Гласови предупреждения за мъгла, вятър, сняг, поледица и сигнали от шофьори по пътя пред вас. Тестова версия, безплатна.</p>
+
+  <a class="dl" id="dl" href="#" aria-disabled="true">Изтегли приложението</a>
+  <p class="small" id="dl-note">Връзката за изтегляне ще бъде добавена скоро. За телефони с Android 8 или по-нов. За iPhone засега няма версия.</p>
+
+  <h2>Какво прави</h2>
+  <div class="card">
+    <ul class="feat">
+      <li>Казва на глас опасностите до 15 km пред вас, през колонките на колата.</li>
+      <li>Звуков сигнал, когато карате по-бързо от ограничението.</li>
+      <li>Сигнали с един бутон или с глас: катастрофа, задръстване, мъгла, камъни и др.</li>
+      <li>Навигация с Google Maps и балонче със скоростта върху нея.</li>
+      <li>Работи и със заключен екран. Без регистрация и без лични данни.</li>
+    </ul>
+  </div>
+
+  <h2>Как да го инсталирате</h2>
+  <div class="card warn" style="margin-bottom:12px">Приложението още не е в Google Play, затова телефонът ще покаже предупреждение. Това е нормално за всяко приложение извън Google Play и не означава, че има вирус.</div>
+  <ol class="steps">
+    <li>Натиснете <q>Изтегли приложението</q>. Ако Google Drive каже, че не може да провери файла за вируси, натиснете <q>Изтегляне въпреки това</q>.</li>
+    <li>Отворете изтегления файл <b>Avtoban-Alert-BG.apk</b> от известията или от папка <q>Изтегляния</q>.</li>
+    <li>Ако излезе <q>Инсталирането е блокирано</q>, натиснете <q>Настройки</q>, включете <q>Разрешаване от този източник</q> и се върнете назад.</li>
+    <li>Натиснете <q>Инсталиране</q>.</li>
+    <li>Ако Google Play Protect покаже предупреждение, натиснете <q>Още подробности</q> → <q>Инсталиране въпреки това</q>.</li>
+  </ol>
+
+  <h2>След инсталиране</h2>
+  <ol class="steps">
+    <li>При първото отваряне разрешете <q>Местоположение</q> (докато използвате приложението) и <q>Известия</q>.</li>
+    <li>Задръжте иконата → <q>Информация за приложението</q> → <q>Батерия</q> → <q>Без ограничения</q>. Иначе телефонът може да го спре по време на път.</li>
+    <li>При първата навигация разрешете <q>Показване върху други приложения</q>, за да виждате балончето върху Google Maps.</li>
+    <li>Преди тръгване натиснете <b>Старт</b>. Ако не чувате глас, инсталирайте български глас: Настройки → <q>Синтез на говор</q>.</li>
+  </ol>
+  <p class="small">Не пипайте телефона, докато карате. При произшествие: <b>112</b>.</p>
+</div>
+<script>
+// Download link: set when the test version is published (e.g. a shared Google Drive link)
+var DOWNLOAD_URL = "";
+if (DOWNLOAD_URL) {
+  var a = document.getElementById("dl");
+  a.href = DOWNLOAD_URL; a.removeAttribute("aria-disabled"); a.target = "_blank"; a.rel = "noopener";
+  document.getElementById("dl-note").textContent = "За телефони с Android 8 или по-нов. За iPhone засега няма версия.";
+}
+</script>
+</body>
+</html>
