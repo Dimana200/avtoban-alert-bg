@@ -25,6 +25,7 @@ QUERIES = [
     AREA + 'way["highway"="secondary"]["ref"](area.a);out geom tags;',
     AREA + 'way["highway"="tertiary"]["ref"](area.a);out geom tags;',
     AREA + 'node["place"~"^(city|town|village)$"](area.a);out;',
+    AREA + 'rel["boundary"="administrative"]["admin_level"="6"](area.a);out geom;',   # municipalities
 ]
 LAT2LATIN = str.maketrans({"А": "A", "І": "I", "Ӏ": "I"})
 
@@ -104,6 +105,39 @@ def nearest_place(places, p):
     return best
 
 
+def municipalities(elements):
+    """[(name, bbox, segments)] from admin_level 6 relations; rings need no assembling because
+    the point-in-polygon test below just counts crossings over all boundary segments."""
+    out = []
+    for el in elements:
+        if el.get("type") != "relation" or el.get("tags", {}).get("admin_level") != "6":
+            continue
+        segs = []
+        for m in el.get("members", []):
+            g = m.get("geometry") or []
+            if m.get("role") in ("outer", "inner") and len(g) > 1:
+                segs += [((a["lat"], a["lon"]), (b["lat"], b["lon"])) for a, b in zip(g, g[1:])]
+        if segs:
+            la = [p[0] for sg in segs for p in sg]
+            lo = [p[1] for sg in segs for p in sg]
+            name = el["tags"].get("name", "")
+            out.append((re.sub(r"(?i)\bобщина\b", "", name).strip(), (min(la), max(la), min(lo), max(lo)), segs))
+    return out
+
+
+def muni_of(munis, p):
+    for name, (a, b, c, d), segs in munis:
+        if not (a <= p[0] <= b and c <= p[1] <= d):
+            continue
+        inside = False
+        for (y1, x1), (y2, x2) in segs:
+            if (y1 > p[0]) != (y2 > p[0]) and p[1] < x1 + (p[0] - y1) * (x2 - x1) / (y2 - y1):
+                inside = not inside
+        if inside:
+            return name
+    return ""
+
+
 def cell_of(p):
     return f"{int(math.floor(p[0] / CELL_LAT))}_{int(math.floor(p[1] / CELL_LON))}"
 
@@ -134,11 +168,14 @@ def build(elements):
         for ln in ls:
             for p in ln:
                 cell_nodes[cell_of(p)].append(p)
+    munis = municipalities(elements)
     points = {}
     for cid, ps in cell_nodes.items():
         lat = sum(p[0] for p in ps) / len(ps)
         lon = sum(p[1] for p in ps) / len(ps)
-        points[cid] = {"id": cid, "lat": round(lat, 4), "lon": round(lon, 4), "near": nearest_place(places, (lat, lon))}
+        # a cell can span several municipalities: keep all of them its road nodes fall in
+        ms = sorted({muni_of(munis, p) for p in ps[:: max(1, len(ps) // 25)]} - {""})
+        points[cid] = {"id": cid, "lat": round(lat, 4), "lon": round(lon, 4), "near": nearest_place(places, (lat, lon)), "m": ms}
 
     roads, segments = [], []
     for ref, ls in sorted(merged.items()):
@@ -190,7 +227,9 @@ def main():
     by = defaultdict(int)
     for r in out["roads"]:
         by[r["cls"]] += 1
-    if by[0] < 3 or by[1] < 5 or len(out["points"]) < 100:
+    with_m = sum(1 for p in out["points"] if p["m"])
+    print(f"cells with a municipality: {with_m} of {len(out['points'])}")
+    if by[0] < 3 or by[1] < 5 or len(out["points"]) < 100 or with_m < len(out["points"]) * 0.8:
         print("too little data, keeping old file:", dict(by), len(out["points"])); sys.exit(1)
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     s = json.dumps(out, ensure_ascii=False, separators=(",", ":"))

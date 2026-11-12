@@ -136,6 +136,32 @@ def main():
         measured += [(n, la, lo, t, lv, {"v": None, "s": txt}) for n, la, lo, t, lv, txt in nimh.hazards(nimh.fetch())]
     except Exception as e:  # noqa: BLE001 - observations are a bonus, never block the forecast
         print("NIMH observations unavailable:", e)
+    # official NIMH warnings for today: municipalities (wind, rain, snow/ice) and regions (fog, storms)
+    try:
+        import nimh_warn
+        munis, regions = nimh_warn.fetch()
+        for p in pts:
+            add = {}
+            for m in p.get("m", []):
+                w = munis.get(nimh_warn.norm(m))
+                if not w:
+                    continue
+                for kind in ("wind", "rain", "snow"):
+                    if w.get(kind, 0) > add.get("nimh" + kind, (0, ""))[0]:
+                        add["nimh" + kind] = (w[kind], m)
+                r = regions.get(w["region"], {})
+                txt = r.get("text", "").lower()
+                if r.get("level"):
+                    if "мъгла" in txt and r["level"] > add.get("nimhfog", (0, ""))[0]:
+                        add["nimhfog"] = (r["level"], m)
+                    if "гръмотев" in txt and r["level"] > add.get("nimhstorm", (0, ""))[0]:
+                        add["nimhstorm"] = (r["level"], m)
+            if add:
+                cur = res.get(p["id"], [])
+                res[p["id"]] = sorted(cur + [{"type": t, "level": lv, "value": {"s": m}, "at": None} for t, (lv, m) in add.items()],
+                                      key=lambda x: -x["level"])
+    except Exception as e:  # noqa: BLE001 - warnings are a bonus, never block the forecast
+        print("NIMH warnings unavailable:", e)
     replaces = {"fogobs": "fog", "snowobs": "snow", "iceobs": "ice", "windobs": "wind"}
     for name, lat, lon, typ, lv, val in measured:
         for p in pts:

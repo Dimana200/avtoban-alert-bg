@@ -159,7 +159,7 @@ h2 { font: 700 15px/1.2 var(--f-display); text-transform: uppercase; letter-spac
     <h2>Официални предупреждения (НИМХ)</h2>
     <div class="list" id="warn"></div>
     <p class="note">Прогнозни данни за квадрати от около 20 × 20 km, обновявани всеки час. Мъглата по прогноза е само „внимание“, защото проверката с летищата показа много фалшиви тревоги. „Опасно“ и „много опасно“ за мъгла идват от измервания: 5 летища и 39 станции на НИМХ, в радиус 25 km. Не заместват указанията на полицията и АПИ. При произшествие: <b>112</b>.</p>
-    <p class="note">Време: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0) · Предупреждения: <a href="https://meteoalarm.org/" target="_blank" rel="noopener">Meteoalarm</a> / НИМХ · Измервания: <a href="https://weather.bg/index.php?koiFail=tekushti&lng=0" target="_blank" rel="noopener">НИМХ (weather.bg)</a>, летища (METAR) · Пътища: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></p>
+    <p class="note">Време: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0) · Предупреждения: <a href="https://meteoalarm.org/" target="_blank" rel="noopener">Meteoalarm</a> / НИМХ · Измервания и предупреждения по общини: <a href="https://weather.bg/obshtini/" target="_blank" rel="noopener">НИМХ (weather.bg)</a>, летища (METAR) · Пътища: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></p>
   </aside>
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -171,6 +171,11 @@ var TYPES = {
   snowobs: { name: "Снеговалеж", fmt: function (v) { return "наблюдаван (" + v.s + ")"; } },
   iceobs: { name: "Поледица", fmt: function (v) { return "наблюдавана (" + v.s + ")"; } },
   windobs: { name: "Силен вятър", fmt: function (v) { return "измерен " + v.s; } },
+  nimhwind: { name: "Силен вятър", fmt: function (v) { return "предупреждение НИМХ за община " + v.s + ", днес"; } },
+  nimhrain: { name: "Обилен дъжд", fmt: function (v) { return "предупреждение НИМХ за община " + v.s + ", днес"; } },
+  nimhsnow: { name: "Сняг/поледица", fmt: function (v) { return "предупреждение НИМХ за община " + v.s + ", днес"; } },
+  nimhfog: { name: "Мъгла", fmt: function (v) { return "предупреждение НИМХ за областта, днес"; } },
+  nimhstorm: { name: "Гръмотевици", fmt: function (v) { return "предупреждение НИМХ за областта, днес"; } },
   wind:  { name: "Силен вятър", fmt: function (v) { return "пориви до " + v + " km/h"; } },
   snow:  { name: "Снеговалеж", fmt: function (v) { return v + " cm/h"; } },
   ice:   { name: "Поледица",   fmt: function (v) { return "валежи при " + v + " °C"; } },
