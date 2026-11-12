@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: "7,37 * * * *"     # every 30 minutes
+    - cron: "7 * * * *"        # every hour (keeps Open-Meteo under 10 000 calls a day)
 permissions:
   contents: read
   pages: write
