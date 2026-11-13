@@ -1,0 +1,23 @@
+name: Probe sources
+on: workflow_dispatch
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          python3 - <<'PY'
+          import re, html, urllib.request, urllib.parse
+          base = "https://www.mvr.bg/opp/bg/пътна-полиция/пътен-контрол/"
+          for slug in ["стационарни-автоматизирани-технически-средства-за-контрол-на-скоростта", "автоматизирани-техническа-средства-за-контрол-на-скоростта", "автоматизирани-технически-средства-за-контрол-на-скоростта"]:
+              u = urllib.parse.quote(base + slug, safe=":/")
+              try:
+                  s = urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0 (avtoban-alert-bg)"}), timeout=60).read().decode("utf-8", "replace")
+              except Exception as e:
+                  print("ERR", slug, e); continue
+              files = sorted(set(re.findall(r'href="([^"]+\.(?:pdf|xlsx?|docx?|csv|kml|zip)[^"]*)"', s, re.I)))
+              body = re.sub(r"<script.*?</script>|<style.*?</style>", " ", s, flags=re.S)
+              t = re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "\n", body)))
+              i = t.find("Стационарни")
+              print("=== ", slug, len(s), "files:", files)
+              print(t[max(0, i - 200): i + 6000])
+          PY
