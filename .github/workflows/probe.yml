@@ -4,12 +4,21 @@ jobs:
   p:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - run: |
-          mkdir out
-          for u in "https://meteo.bg/bg/rekiTablitsa" "https://meteo.bg/bg/forecasts/hydro" "https://meteo.bg/bg/rekiKarta" "https://hydro.bg/bg/t1.php"; do
-            f=out/$(echo "$u" | tr -c 'a-zA-Z0-9' _).html
-            curl -sSL -m 40 -A "Mozilla/5.0 AvtobanAlertBG" -o $f -w "== $u HTTP %{http_code} %{size_download}B\n" "$u" || true
-          done
-          curl -s https://meteo.bg/robots.txt > out/robots.txt; cat out/robots.txt | head -40
-      - uses: actions/upload-artifact@v4
-        with: { name: pages, path: out }
+          cd scripts && python3 -c "
+          import nimh_warn
+          for code,d in nimh_warn.fetch_day('d').items():
+              if code in ('DOB','SHU'): print(code, sorted(d['munis']))
+          "
+          cd ..
+          curl -sSL -m 40 https://hydro.bg/bg/t1.php -o t1.html
+          python3 - <<'PY'
+          import re,html
+          s=open('t1.html',encoding='utf-8',errors='replace').read()
+          print('LINKS', sorted(set(re.findall(r'(?:href|src)="([^"]+)"', s, re.I)))[:80])
+          t=re.sub(r'<script.*?</script>|<style.*?</style>','',s,flags=re.S|re.I)
+          t=html.unescape(re.sub(r'<[^>]+>',' ',t)); t=re.sub(r'\s+',' ',t)
+          print('TEXT', t[:3000])
+          PY
+          curl -s https://hydro.bg/robots.txt | head -20
