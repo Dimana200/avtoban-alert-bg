@@ -5,17 +5,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          curl -sI https://info.meteo.bg/openData/river-runoff | sed 's/^/HDR /'
-          for u in https://info.meteo.bg/openData/river-runoff/ https://info.meteo.bg/openData/river-runoff/index.php; do
-            curl -s -m 40 -c c.txt -b c.txt "$u" -o /dev/null
-            curl -s -m 40 -c c.txt -b c.txt -X POST --data "mydate=2026-11-12" -H "Referer: $u" "$u" -o r.html -w "POST $u HTTP %{http_code} %{size_download}B\n"
-            grep -oE 'href="[^"]*(csv|CSV)[^"]*"' r.html | head -3 | sed 's/^/CSVLINK /'
-          done
+          pip install pillow >/dev/null
+          curl -sSL -m 40 https://hydro.bg/bg/t1.php -o t1.html
+          curl -sSL -m 60 "https://hydro.bg/bg/river-maps/makeMap1.php?noFile=0" -o m.png
           python3 - <<'PY'
           import re,html
-          s=open('r.html',encoding='utf-8',errors='replace').read()
-          t=re.sub(r'<script.*?</script>|<style.*?</style>','',s,flags=re.S|re.I); t=re.sub(r'</tr>','\n',t)
-          t=html.unescape(re.sub(r'<[^>]+>',' | ',t)); t=re.sub(r'(\s*\|\s*)+',' | ',t); t=re.sub(r'[ \t]+',' ',t)
-          i=t.find('Свалете CSV'); i=t.find('Свалете CSV', i+20); print('TEXT', t[max(0,i-300):i+4000])
+          from PIL import Image
+          from collections import Counter
+          s=open('t1.html',encoding='utf-8',errors='replace').read()
+          i=s.find('Пояснения'); t=html.unescape(re.sub(r'<[^>]+>',' | ',s[i:i+6000])); print('LEGEND', re.sub(r'(\s*\|\s*)+',' | ',t)[:1800])
+          print('LEGENDIMG', re.findall(r'<img[^>]+>', s[i:i+6000])[:10])
+          im=Image.open('m.png').convert('RGB'); print('SIZE', im.size)
+          for m in re.finditer(r'coords="([-\d.]+),([-\d.]+),\d+"\s+id="(\d+)".*?hla\(event,\'\d+\',\'([^\']*)\'', s, re.S):
+              x,y=float(m.group(1)),float(m.group(2))
+              if not (0<=x<im.size[0] and 0<=y<im.size[1]): continue
+              c=Counter(im.getpixel((int(x)+dx,int(y)+dy)) for dx in range(-4,5) for dy in range(-4,5))
+              print('ST', m.group(3), m.group(4), int(x), int(y), c.most_common(3))
           PY
-          l=$(grep -oE 'href="[^"]*\.csv[^"]*"' r.html | head -1 | cut -d'"' -f2); echo "CSV $l"; [ -n "$l" ] && curl -sSL "https://info.meteo.bg/openData/river-runoff/$l" | head -8 | sed 's/^/CSVL /'; curl -sSL "https://info.meteo.bg/$(echo $l | sed 's#^\.\./##')" | head -8 | sed 's/^/CSVL2 /'
