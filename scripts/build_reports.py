@@ -10,7 +10,7 @@ import common  # noqa: F401 - IPv4-only patch
 
 URL = "https://firestore.googleapis.com/v1/projects/avtoban-alert-bg/databases/(default)/documents:runQuery"
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "site", "reports.json")
-TYPES = {"accident", "stranded", "jam", "closed", "roadworks", "fog", "wind", "rocks", "camera"}
+TYPES = {"accident", "stranded", "jam", "closed", "roadworks", "fog", "wind", "rocks", "camera", "fixedcam"}
 
 
 def num(x):
