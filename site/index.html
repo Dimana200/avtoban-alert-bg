@@ -116,6 +116,11 @@ h2 { font: 700 15px/1.2 var(--f-display); text-transform: uppercase; letter-spac
 .dist { font-variant-numeric: tabular-nums; text-transform: none; }
 html.app header, html.app aside { display: none; }
 html.app main { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+.lyr-btn { width: 40px; height: 40px; border-radius: 10px; border: 2px solid rgba(0,0,0,.25); background: var(--surface); color: var(--fg); font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.lyr-box { background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-top: 6px; box-shadow: var(--shadow); font: 14px/1.3 var(--f-body); display: grid; gap: 8px; min-width: 210px; }
+.lyr-box b { font: 700 13px/1 var(--f-display); letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.lyr-box label { display: flex; align-items: center; gap: 10px; cursor: pointer; min-height: 28px; }
+.lyr-box input { width: 20px; height: 20px; accent-color: var(--ok); }
 .chip { border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 999px; padding: 6px 11px; font: 600 13px/1 var(--f-body); cursor: pointer; }
 .chip[aria-pressed="false"] { opacity: .45; text-decoration: line-through; }
 .chip:focus-visible { outline: 3px solid var(--lv2); outline-offset: 2px; }
@@ -192,6 +197,11 @@ var LV = ["Нормално", "Внимание", "Опасно", "Много о
 var WIDTH = [5, 4, 3, 2];
 var map, canvas, roads = null, haz = null, pts = {}, layer = null, shown = [], userPos = null, userMark = null;
 var showCls = [true, true, true, true];
+// what the viewer chose to see on the map (kept in this browser / this phone)
+var SHOW = { ok: true, speed: true, red: true, avg: true, rep: true };
+try { var saved = JSON.parse(localStorage.getItem("layers") || "{}"); for (var k in saved) if (k in SHOW) SHOW[k] = !!saved[k]; } catch (e) { /* no storage: defaults */ }
+var LAYERS = {};   // speed, red, avg, rep -> layerGroup
+function showLayer(k) { var l = LAYERS[k]; if (!l || !map) return; if (SHOW[k]) l.addTo(map); else map.removeLayer(l); }
 
 function css(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
 function color(lv) { return lv ? css("--lv" + lv) : css("--ok"); }
@@ -222,6 +232,7 @@ function drawRoads() {
   roads.segments.forEach(function (s) {
     if (!showCls[s.k]) return;
     var lv = level(s.p);
+    if (!lv && !SHOW.ok) return;            // "only roads with a hazard"
     var pl = L.polyline(s.c, { renderer: canvas, color: color(lv), weight: WIDTH[s.k] + (lv ? 2 : 0), opacity: s.k === 3 && !lv ? 0.75 : 1, lineCap: "round", lineJoin: "round" });
     pl.on("click", function (e) { popup(s.r, s.p, e.latlng); });
     if (lv) hot.push(pl); else layer.addLayer(pl);
@@ -330,7 +341,7 @@ var reportLayer = null;
 // average-speed sections of BG TOLL: a camera mark at each end, one popup per direction
 function loadAvgSpeed() {
   fetch("avgspeed.json").then(function (r) { return r.json(); }).then(function (js) {
-    var layer = L.layerGroup().addTo(map), seen = {};
+    var layer = LAYERS.avg = L.layerGroup(), seen = {};
     (js.sections || []).forEach(function (s) {
       [[s.a, s.from], [s.b, s.to]].forEach(function (end) {
         var key = end[0].join(",");
@@ -344,20 +355,23 @@ function loadAvgSpeed() {
           "<br><small>Източник: БГ ТОЛ</small>");
       });
     });
+    showLayer("avg");
   }).catch(function () { /* optional */ });
 }
 
 // stationary speed cameras (OpenStreetMap + Столична община)
 function loadCameras() {
   fetch("cameras.json").then(function (r) { return r.json(); }).then(function (js) {
-    var layer = L.layerGroup().addTo(map);
+    LAYERS.speed = L.layerGroup(); LAYERS.red = L.layerGroup();
     (js.cameras || []).forEach(function (c) {
+      var layer = c.t === "red" ? LAYERS.red : LAYERS.speed;
       var icon = L.divIcon({ className: "", iconSize: [22, 22], iconAnchor: [11, 11],
         html: '<div title="' + (c.t === "red" ? "Камера на светофар" : "Камера за скорост") + '" style="width:22px;height:22px;border-radius:50%;background:' + (c.t === "red" ? "#C2255C" : "#E8590C") + ';color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font:700 11px/1 var(--f-display);box-shadow:0 2px 6px rgba(0,0,0,.4)">' + (c.limit || (c.t === "red" ? "С" : "К")) + "</div>" });
       L.marker([c.lat, c.lon], { icon: icon }).addTo(layer).bindPopup("<b>" + (c.t === "red" ? "Камера на светофар" : "Камера за скорост") + "</b>" +
         (c.limit ? "<br>Ограничение " + c.limit + " km/h" : "") + (c.name ? "<br>" + esc(c.name) : "") +
         "<br><small>Източник: " + (c.src === "sofia" ? "Столична община (планирана)" : c.src === "mapatlas" ? '<a href="https://mapatlas.eu/camera-index" target="_blank" rel="noopener">MapAtlas / MapMetrics driver reports</a> (CC BY 4.0)' : "OpenStreetMap") + "</small>");
     });
+    showLayer("speed"); showLayer("red");
   }).catch(function () { /* optional */ });
 }
 
@@ -366,7 +380,7 @@ function loadReports() {
   return fetch("reports.json?t=" + Date.now()).then(function (r) { return r.json(); }).then(function (js) {
     if (typeof js.drivers === "number") { drivers = js.drivers; stamp(); }
     if (reportLayer) map.removeLayer(reportLayer);
-    reportLayer = L.layerGroup().addTo(map);
+    reportLayer = LAYERS.rep = L.layerGroup();
     (js.reports || []).forEach(function (f) {
       var t = f.t, up = f.up || 0, down = f.down || 0;
       var exp = new Date(f.exp);
@@ -377,10 +391,33 @@ function loadReports() {
         .bindPopup("<b>Сигнал от шофьор: " + esc(REPORT_NAMES[t]) + "</b><br>Потвърдили: " + up + " · Няма го: " + down +
           "<br>Валиден до " + exp.toLocaleTimeString("bg-BG", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Sofia" }) + " ч.");
     });
+    showLayer("rep");
   }).catch(function () { /* reports are optional */ });
 }
 var meMark = null, follow = true;
 // the position dots use the roads' canvas: a second canvas layer on top would swallow taps on the roads (no popup)
+function layerControl() {
+  var NAMES = [["ok", "Пътища без опасност (зелени)"], ["speed", "Камери за скорост"], ["red", "Камери на светофар"],
+               ["avg", "Средна скорост (БГ ТОЛ)"], ["rep", "Сигнали от шофьори"]];
+  var C = L.Control.extend({ options: { position: "topright" }, onAdd: function () {
+    var d = L.DomUtil.create("div");
+    d.innerHTML = '<button class="lyr-btn" type="button" title="Какво да се показва" aria-label="Какво да се показва на картата" aria-expanded="false">☰</button>' +
+      '<div class="lyr-box" hidden><b>Покажи на картата</b>' + NAMES.map(function (n) {
+        return '<label><input type="checkbox" data-l="' + n[0] + '"' + (SHOW[n[0]] ? " checked" : "") + "> " + n[1] + "</label>";
+      }).join("") + "</div>";
+    L.DomEvent.disableClickPropagation(d); L.DomEvent.disableScrollPropagation(d);
+    var btn = d.querySelector("button"), box = d.querySelector(".lyr-box");
+    btn.addEventListener("click", function () { box.hidden = !box.hidden; btn.setAttribute("aria-expanded", String(!box.hidden)); });
+    box.addEventListener("change", function (e) {
+      var k = e.target.getAttribute("data-l"); if (!k) return;
+      SHOW[k] = e.target.checked;
+      try { localStorage.setItem("layers", JSON.stringify(SHOW)); } catch (err) { /* not kept, still works now */ }
+      if (k === "ok") { if (roads && haz) drawRoads(); } else showLayer(k);
+    });
+    return d;
+  } });
+  new C().addTo(map);
+}
 function appMode() {
   document.documentElement.classList.add("app");
   setTimeout(function () { map.invalidateSize(); }, 50);
@@ -438,6 +475,7 @@ function start() {
   loadReports();
   setInterval(load, 10 * 60000);
   setInterval(loadReports, 2 * 60000);
+  layerControl();
   loadAvgSpeed();
   loadCameras();
   setInterval(stamp, 60000);
