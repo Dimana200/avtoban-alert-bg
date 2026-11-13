@@ -52,6 +52,32 @@ def parse(page, code):
     return munis, region
 
 
+def dates(page):
+    """(forecast date, issued date) as datetime.date, from the region header."""
+    from datetime import datetime
+    f = re.search(r"прогноза за:\s*(\d{2}\.\d{2}\.\d{4})", re.sub(r"<[^>]+>", " ", page))
+    i = re.search(r"издадена на:\s*(\d{4}-\d{2}-\d{2})", re.sub(r"<[^>]+>", " ", page))
+    return (datetime.strptime(f.group(1), "%d.%m.%Y").date() if f else None,
+            datetime.strptime(i.group(1), "%Y-%m-%d").date() if i else None)
+
+
+def fetch_day(day="d"):
+    """Warnings per region code for one day page (z=d today, z=u tomorrow):
+    {code: {"date", "issued", "munis": {norm name: {kind: level}}, "region": {level, text}}}"""
+    out = {}
+    for code in REGIONS:
+        try:
+            page = http(f"{BASE}?z={day}&o={code}", timeout=60, raw=True, tries=3).decode("utf-8", "replace")
+        except Exception as e:  # noqa: BLE001
+            print("   NIMH warnings: region", code, day, "failed:", e)
+            continue
+        m, r = parse(page, code)
+        f, i = dates(page)
+        out[code] = {"date": f.isoformat() if f else None, "issued": i.isoformat() if i else None, "munis": m, "region": r}
+        time.sleep(2)
+    return out
+
+
 def fetch():
     munis, regions = {}, {}
     for code in REGIONS:

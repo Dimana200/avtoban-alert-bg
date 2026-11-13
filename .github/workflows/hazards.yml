@@ -34,10 +34,16 @@ jobs:
           if [ "${{ github.event_name }}" != "push" ] && [ "${{ inputs.force }}" != "true" ] && curl -fsS "$LIVE/hazards.json" -o site/hazards.json \
              && python3 -c "import json,sys,datetime as d; u=json.load(open('site/hazards.json'))['updated']; sys.exit((d.datetime.now(d.timezone.utc)-d.datetime.fromisoformat(u.replace('Z','+00:00'))).total_seconds()>3300)"; then
             echo "weather is less than 55 minutes old, kept"
+            curl -fsS "$LIVE/alerts.json" -o site/alerts.json || true
           else
             # a weather service down must not stop the map: keep the last good file then
             (cd scripts && python3 build_hazards.py) || curl -fsS "$LIVE/hazards.json" -o site/hazards.json
+            # "Моят район": NIMH warnings for today and tomorrow by municipality
+            (cd scripts && python3 build_alerts.py) || curl -fsS "$LIVE/alerts.json" -o site/alerts.json || true
           fi
+      - name: Earthquakes (EMSC, every run)
+        run: |
+          cd scripts && python3 build_quakes.py || curl -fsS https://dimana200.github.io/avtoban-alert-bg/quakes.json -o ../site/quakes.json || true
       - name: Driver reports (one Firestore query for everybody)
         run: |
           cd scripts && python3 build_reports.py || curl -fsS https://dimana200.github.io/avtoban-alert-bg/reports.json -o ../site/reports.json || echo '{"reports":[]}' > ../site/reports.json
