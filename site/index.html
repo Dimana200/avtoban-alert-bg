@@ -164,7 +164,7 @@ html.app main { grid-template-columns: 1fr; grid-template-rows: 1fr; }
     <h2>Официални предупреждения (НИМХ)</h2>
     <div class="list" id="warn"></div>
     <p class="note">Прогнозни данни за квадрати от около 20 × 20 km, обновявани всеки час. Мъглата по прогноза е само „внимание“, защото проверката с летищата показа много фалшиви тревоги. „Опасно“ и „много опасно“ за мъгла идват от измервания: 5 летища и 39 станции на НИМХ, в радиус 25 km. Не заместват указанията на полицията и АПИ. При произшествие: <b>112</b>.</p>
-    <p class="note">Време: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0) · Предупреждения: <a href="https://meteoalarm.org/" target="_blank" rel="noopener">Meteoalarm</a> / НИМХ · Измервания и предупреждения по общини: <a href="https://weather.bg/obshtini/" target="_blank" rel="noopener">НИМХ (weather.bg)</a>, летища (METAR) · Пътища: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></p>
+    <p class="note">Време: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0) · Предупреждения: <a href="https://meteoalarm.org/" target="_blank" rel="noopener">Meteoalarm</a> / НИМХ · Измервания и предупреждения по общини: <a href="https://weather.bg/obshtini/" target="_blank" rel="noopener">НИМХ (weather.bg)</a>, летища (METAR) · Пътища: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · Камери: OpenStreetMap, Столична община, <a href="https://mapatlas.eu/camera-index" target="_blank" rel="noopener">MapAtlas / MapMetrics driver reports</a> (CC BY 4.0) · Средна скорост: БГ ТОЛ</p>
   </aside>
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -352,10 +352,10 @@ function loadCameras() {
     var layer = L.layerGroup().addTo(map);
     (js.cameras || []).forEach(function (c) {
       var icon = L.divIcon({ className: "", iconSize: [22, 22], iconAnchor: [11, 11],
-        html: '<div title="Камера за скорост" style="width:22px;height:22px;border-radius:50%;background:#E8590C;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font:700 11px/1 var(--f-display);box-shadow:0 2px 6px rgba(0,0,0,.4)">' + (c.limit || "К") + "</div>" });
-      L.marker([c.lat, c.lon], { icon: icon }).addTo(layer).bindPopup("<b>Камера за скорост</b>" +
+        html: '<div title="' + (c.t === "red" ? "Камера на светофар" : "Камера за скорост") + '" style="width:22px;height:22px;border-radius:50%;background:' + (c.t === "red" ? "#C2255C" : "#E8590C") + ';color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font:700 11px/1 var(--f-display);box-shadow:0 2px 6px rgba(0,0,0,.4)">' + (c.limit || (c.t === "red" ? "С" : "К")) + "</div>" });
+      L.marker([c.lat, c.lon], { icon: icon }).addTo(layer).bindPopup("<b>" + (c.t === "red" ? "Камера на светофар" : "Камера за скорост") + "</b>" +
         (c.limit ? "<br>Ограничение " + c.limit + " km/h" : "") + (c.name ? "<br>" + esc(c.name) : "") +
-        "<br><small>Източник: " + (c.src === "sofia" ? "Столична община (планирана)" : "OpenStreetMap") + "</small>");
+        "<br><small>Източник: " + (c.src === "sofia" ? "Столична община (планирана)" : c.src === "mapatlas" ? '<a href="https://mapatlas.eu/camera-index" target="_blank" rel="noopener">MapAtlas / MapMetrics driver reports</a> (CC BY 4.0)' : "OpenStreetMap") + "</small>");
     });
   }).catch(function () { /* optional */ });
 }
