@@ -5,7 +5,7 @@ from playwright.sync_api import sync_playwright
 SITE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "site")
 roads = json.load(open(os.path.join(SITE, "roads.json"), encoding="utf-8"))
 cells = [p["id"] for p in roads["points"] if abs(p["lat"] - 42.15) < 0.25 and abs(p["lon"] - 24.75) < 0.35]
-json.dump({"updated": "2026-11-14T00:00:00Z", "points": {c: [{"type": "nimhrain", "level": 2, "value": {"s": "Пловдив"}}] for c in cells}},
+json.dump({"updated": "2026-11-14T00:00:00Z", "warnings": [], "points": {c: [{"type": "nimhrain", "level": 2, "value": {"s": "Пловдив"}}] for c in cells}},
           open(os.path.join(SITE, "hazards.json"), "w"))
 out = sys.argv[1]
 ok = True
