@@ -326,6 +326,26 @@ function load() {
 var REPORT_NAMES = { accident: "Катастрофа", stranded: "Закъсал автомобил", jam: "Задръстване", closed: "Затворен участък", roadworks: "Участък в ремонт", fog: "Мъгла", wind: "Силен вятър", rocks: "Падащи камъни", camera: "Мобилна камера" };
 var REPORT_LETTER = { accident: "!", stranded: "А", jam: "З", closed: "✕", roadworks: "Р", fog: "М", wind: "В", rocks: "К", camera: "📷" };
 var reportLayer = null;
+// average-speed sections of BG TOLL: a camera mark at each end, one popup per direction
+function loadAvgSpeed() {
+  fetch("avgspeed.json").then(function (r) { return r.json(); }).then(function (js) {
+    var layer = L.layerGroup().addTo(map), seen = {};
+    (js.sections || []).forEach(function (s) {
+      [[s.a, s.from], [s.b, s.to]].forEach(function (end) {
+        var key = end[0].join(",");
+        if (seen[key]) return;
+        seen[key] = true;
+        var icon = L.divIcon({ className: "", iconSize: [26, 26], iconAnchor: [13, 13],
+          html: '<div title="Камера за средна скорост" style="width:26px;height:26px;border-radius:6px;background:#1A73E8;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font:700 13px/1 var(--f-display);box-shadow:0 2px 6px rgba(0,0,0,.4)">Ø</div>' });
+        var mine = js.sections.filter(function (x) { return x.a.join(",") === key; });
+        L.marker(end[0], { icon: icon }).addTo(layer).bindPopup("<b>Средна скорост · " + esc(s.road) + "</b><br>" +
+          (mine.length ? mine.map(function (x) { return "→ " + esc(x.to) + ": " + x.len_km.toFixed(1) + " km" + (x.cert ? "" : " (предстои проверка)"); }).join("<br>") : esc(end[1])) +
+          "<br><small>Източник: БГ ТОЛ</small>");
+      });
+    });
+  }).catch(function () { /* optional */ });
+}
+
 function loadReports() {
   // driver reports: a small file the server refreshes every 10 minutes (the app warns live by itself)
   return fetch("reports.json?t=" + Date.now()).then(function (r) { return r.json(); }).then(function (js) {
@@ -402,6 +422,7 @@ function start() {
   loadReports();
   setInterval(load, 10 * 60000);
   setInterval(loadReports, 2 * 60000);
+  loadAvgSpeed();
   setInterval(stamp, 60000);
 }
 document.addEventListener("DOMContentLoaded", start);
