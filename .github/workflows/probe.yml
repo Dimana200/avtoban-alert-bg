@@ -1,0 +1,19 @@
+name: Probe sources
+on: workflow_dispatch
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          for q in 'node["highway"="toll_gantry"](area.a);out;' 'node["highway"="milestone"](area.a);out;' 'node["man_made"="gantry"](area.a);out;'; do
+            curl -4 -s -m 300 -A "avtoban-alert-bg/1.0 (https://github.com/Dimana200/avtoban-alert-bg)" https://overpass-api.de/api/interpreter --data-urlencode "data=[out:json][timeout:200];area[\"ISO3166-1\"=\"BG\"][admin_level=2]->.a;$q" -o o.json
+            python3 - "$q" <<'PY'
+          import json, sys, collections
+          e = json.load(open('o.json')).get('elements', [])
+          print(sys.argv[1], len(e))
+          keys = collections.Counter(k for x in e for k in x.get('tags', {}))
+          print('  tags', keys.most_common(12))
+          for x in e[:6]: print('  ', x['lat'], x['lon'], x.get('tags'))
+          PY
+            sleep 5
+          done
