@@ -35,7 +35,8 @@ jobs:
              && python3 -c "import json,sys,datetime as d; u=json.load(open('site/hazards.json'))['updated']; sys.exit((d.datetime.now(d.timezone.utc)-d.datetime.fromisoformat(u.replace('Z','+00:00'))).total_seconds()>3300)"; then
             echo "weather is less than 55 minutes old, kept"
           else
-            cd scripts && python3 build_hazards.py
+            # a weather service down must not stop the map: keep the last good file then
+            (cd scripts && python3 build_hazards.py) || curl -fsS "$LIVE/hazards.json" -o site/hazards.json
           fi
       - name: Driver reports (one Firestore query for everybody)
         run: |
