@@ -19,7 +19,9 @@ jobs:
               files = sorted(set(re.findall(r'href="([^"]+\.(?:pdf|xlsx?|docx?|csv|kml|zip)[^"]*)"', s2, re.I)))
               body = re.sub(r"<script.*?</script>|<style.*?</style>", " ", s2, flags=re.S)
               txt = re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "\n", body)))
-              i = txt.find("Стационарни автоматизирани")
-              print("PAGE", u, "FILES", [urllib.parse.unquote(f) for f in files])
-              print("TEXT", txt[i:i + 5000])
+              print("PAGE", u, "FILES", [urllib.parse.unquote(f) for f in files], "imgs", re.findall(r'<img[^>]+src="([^"]+)"', s2)[:15], "iframes", re.findall(r'<iframe[^>]+src="([^"]+)"', s2))
+              hits = [m.start() for m in re.finditer("Стационарни автоматизирани", txt)]
+              print("HITS", hits, len(txt))
+              j = hits[-1] if hits else 0
+              print("TEXT", txt[j:j + 7000])
           PY
