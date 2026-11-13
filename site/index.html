@@ -380,6 +380,7 @@ function loadReports() {
   }).catch(function () { /* reports are optional */ });
 }
 var meMark = null, follow = true;
+// the position dots use the roads' canvas: a second canvas layer on top would swallow taps on the roads (no popup)
 function appMode() {
   document.documentElement.classList.add("app");
   setTimeout(function () { map.invalidateSize(); }, 50);
@@ -387,7 +388,7 @@ function appMode() {
   if (navigator.geolocation) navigator.geolocation.watchPosition(function (pos) {
     var p = [pos.coords.latitude, pos.coords.longitude];
     if (!meMark) {
-      meMark = L.circleMarker(p, { radius: 9, color: "#fff", weight: 3, fillColor: "#1E66F5", fillOpacity: 1 }).addTo(map);
+      meMark = L.circleMarker(p, { renderer: canvas, interactive: false, radius: 9, color: "#fff", weight: 3, fillColor: "#1E66F5", fillOpacity: 1 }).addTo(map);
       map.setView(p, 10);
     } else meMark.setLatLng(p);
     if (follow) map.panTo(p, { animate: true });
@@ -424,7 +425,7 @@ function start() {
     navigator.geolocation.getCurrentPosition(function (pos) {
       userPos = [pos.coords.latitude, pos.coords.longitude];
       if (userMark) map.removeLayer(userMark);
-      userMark = L.circleMarker(userPos, { radius: 8, color: "#fff", weight: 3, fillColor: "#1E66F5", fillOpacity: 1 }).addTo(map);
+      userMark = L.circleMarker(userPos, { renderer: canvas, interactive: false, radius: 8, color: "#fff", weight: 3, fillColor: "#1E66F5", fillOpacity: 1 }).addTo(map);
       map.setView(userPos, 9);
       document.getElementById("h-list").textContent = "Опасности по близост до вас";
       if (haz) render();
