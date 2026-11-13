@@ -7,17 +7,19 @@ jobs:
       - run: |
           python3 - <<'PY'
           import re, html, urllib.request, urllib.parse
-          base = "https://www.mvr.bg/opp/bg/пътна-полиция/пътен-контрол/"
-          for slug in ["стационарни-автоматизирани-технически-средства-за-контрол-на-скоростта", "автоматизирани-техническа-средства-за-контрол-на-скоростта", "автоматизирани-технически-средства-за-контрол-на-скоростта"]:
-              u = urllib.parse.quote(base + slug, safe=":/")
-              try:
-                  s = urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0 (avtoban-alert-bg)"}), timeout=60).read().decode("utf-8", "replace")
-              except Exception as e:
-                  print("ERR", slug, e); continue
-              files = sorted(set(re.findall(r'href="([^"]+\.(?:pdf|xlsx?|docx?|csv|kml|zip)[^"]*)"', s, re.I)))
-              body = re.sub(r"<script.*?</script>|<style.*?</style>", " ", s, flags=re.S)
-              t = re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "\n", body)))
-              i = t.find("Стационарни")
-              print("=== ", slug, len(s), "files:", files)
-              print(t[max(0, i - 200): i + 6000])
+          H = {"User-Agent": "Mozilla/5.0 (avtoban-alert-bg)"}
+          get = lambda u: urllib.request.urlopen(urllib.request.Request(u, headers=H), timeout=60).read().decode("utf-8", "replace")
+          s = get(urllib.parse.quote("https://www.mvr.bg/opp/bg/пътна-полиция/пътен-контрол/автоматизирани-технически-средства-за-контрол-на-скоростта", safe=":/"))
+          links = [(urllib.parse.unquote(h), re.sub("<[^>]+>", "", t).strip()) for h, t in re.findall(r'<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>', s, re.S)]
+          st = [l for l in links if "тационарни" in l[1]]
+          print("LINKS", st)
+          for h, t in st[:1]:
+              u = h if h.startswith("http") else "https://www.mvr.bg" + h
+              s2 = get(urllib.parse.quote(u, safe=":/?=&%"))
+              files = sorted(set(re.findall(r'href="([^"]+\.(?:pdf|xlsx?|docx?|csv|kml|zip)[^"]*)"', s2, re.I)))
+              body = re.sub(r"<script.*?</script>|<style.*?</style>", " ", s2, flags=re.S)
+              txt = re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "\n", body)))
+              i = txt.find("Стационарни автоматизирани")
+              print("PAGE", u, "FILES", [urllib.parse.unquote(f) for f in files])
+              print("TEXT", txt[i:i + 5000])
           PY
