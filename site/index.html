@@ -303,8 +303,10 @@ function stamp() {
   if (!haz) return;
   var t = new Date(haz.updated), min = Math.round((Date.now() - t) / 60000);
   el.className = "upd" + (min > 90 ? " stale" : "");
-  el.innerHTML = "Обновено <b>" + t.toLocaleTimeString("bg-BG", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Sofia" }) + " ч.</b> българско време (преди " + Math.max(0, min) + " мин.) · " + roads.roads.length + " пътя";
+  el.innerHTML = "Обновено <b>" + t.toLocaleTimeString("bg-BG", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Sofia" }) + " ч.</b> българско време (преди " + Math.max(0, min) + " мин.) · " + roads.roads.length + " пътя" +
+    (drivers != null ? " · 👥 <b>" + drivers.toLocaleString("bg-BG") + "</b> шофьори с приложението сега" : "");
 }
+var drivers = null;   // app users now (like Blitzer.de), counted by the server every 15 minutes
 function load() {
   return Promise.all([
     roads ? roads : fetch("roads.json").then(function (r) { return r.json(); }),
@@ -327,6 +329,7 @@ var reportLayer = null;
 function loadReports() {
   // driver reports: a small file the server refreshes every 10 minutes (the app warns live by itself)
   return fetch("reports.json?t=" + Date.now()).then(function (r) { return r.json(); }).then(function (js) {
+    if (typeof js.drivers === "number") { drivers = js.drivers; stamp(); }
     if (reportLayer) map.removeLayer(reportLayer);
     reportLayer = L.layerGroup().addTo(map);
     (js.reports || []).forEach(function (f) {

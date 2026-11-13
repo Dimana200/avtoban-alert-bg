@@ -5,7 +5,7 @@ The map reads this small file instead of asking Firestore itself. Firestore then
 however many people look at the map: one query every few minutes from here.
 """
 import json, os, urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import common  # noqa: F401 - IPv4-only patch
 
 URL = "https://firestore.googleapis.com/v1/projects/avtoban-alert-bg/databases/(default)/documents:runQuery"
@@ -15,6 +15,22 @@ TYPES = {"accident", "stranded", "jam", "closed", "roadworks", "fog", "wind", "r
 
 def num(x):
     return float(x.get("doubleValue", x.get("integerValue", 0))) if x else 0.0
+
+
+def count_drivers():
+    """Apps that said "here" in the last 12 minutes (they do every 10). A count query costs ~1 read per 1000."""
+    since = (datetime.now(timezone.utc) - timedelta(minutes=12)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    q = {"structuredAggregationQuery": {"aggregations": [{"alias": "n", "count": {}}],
+         "structuredQuery": {"from": [{"collectionId": "presence"}],
+                             "where": {"fieldFilter": {"field": {"fieldPath": "t"}, "op": "GREATER_THAN", "value": {"timestampValue": since}}}}}}
+    try:
+        req = urllib.request.Request(URL.replace(":runQuery", ":runAggregationQuery"), data=json.dumps(q).encode(),
+                                     headers={"Content-Type": "application/json", "User-Agent": common.UA})
+        rows = json.load(urllib.request.urlopen(req, timeout=60))
+        return int(rows[0]["result"]["aggregateFields"]["n"]["integerValue"])
+    except Exception as e:  # noqa: BLE001 - the count is optional
+        print("driver count unavailable:", e)
+        return None
 
 
 def main():
@@ -36,9 +52,10 @@ def main():
             continue
         out.append({"id": d["name"].rsplit("/", 1)[1], "t": t, "lat": round(num(f.get("lat")), 5), "lon": round(num(f.get("lon")), 5),
                     "exp": f["exp"]["timestampValue"], "up": up, "down": down})
+    drivers = count_drivers()
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
-    json.dump({"updated": now, "reports": out}, open(OUT, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
-    print(f"reports valid now: {len(out)}")
+    json.dump({"updated": now, "drivers": drivers, "reports": out}, open(OUT, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
+    print(f"reports valid now: {len(out)}; drivers with the app now: {drivers}")
 
 
 if __name__ == "__main__":
