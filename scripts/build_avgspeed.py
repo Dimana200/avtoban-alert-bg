@@ -57,6 +57,35 @@ def km(a, b):
            math.cos(math.radians(a[0])) * math.cos(math.radians(b[0])) * math.sin(math.radians(b[1] - a[1]) / 2) ** 2))
 
 
+SPEED = os.path.join(HERE, "..", "site", "speed")
+
+
+def section_limits(a, b, ls):
+    """Speed limits along the section from OpenStreetMap (site/speed tiles): {limit: km} for the speed ways
+    that lie on this road (within 30 m) between the two cameras."""
+    lat0 = (a[0] + b[0]) / 2
+    (ax, ay), (bx, by) = xy(a, lat0), xy(b, lat0)
+    L2 = (bx - ax) ** 2 + (by - ay) ** 2 or 1
+    tiles = {f"{int(math.floor(la * 10))}_{int(math.floor(lo * 10))}"
+             for la in [min(a[0], b[0]) + i * 0.05 for i in range(int(abs(a[0] - b[0]) / 0.05) + 3)]
+             for lo in [min(a[1], b[1]) + j * 0.05 for j in range(int(abs(a[1] - b[1]) / 0.05) + 3)]}
+    out = {}
+    for t in tiles:
+        f = os.path.join(SPEED, t + ".json")
+        if not os.path.exists(f):
+            continue
+        for w in json.load(open(f)):
+            lim, pts = w[0], list(zip(w[1::2], w[2::2]))
+            for p, q in zip(pts, pts[1:]):
+                m = ((p[0] + q[0]) / 2, (p[1] + q[1]) / 2)
+                mx, my = xy(m, lat0)
+                tt = ((mx - ax) * (bx - ax) + (my - ay) * (by - ay)) / L2
+                if not 0 <= tt <= 1 or near_road(m, ls)[0] > 30:
+                    continue
+                out[lim] = out.get(lim, 0) + km(p, q)
+    return out
+
+
 def main():
     rows = [l.rstrip("\n").split("\t") for l in open(SRC, encoding="utf-8") if l.strip() and not l.startswith("#")]
     roads = json.load(open(ROADS, encoding="utf-8"))
@@ -125,9 +154,22 @@ def main():
         print(f"{'ok ' if ok else 'BAD'} {ref:6} {f} {kf} -> {t} {kt}: {length:.1f} km, straight {km(a, b) if a and b else -1:.1f} | {ha} | {hb}")
         if not ok:
             continue
+        lims = section_limits(a, b, lines.get(ref, []))
+        if ref.startswith("A"):          # on motorways, the slow pieces next to the road are junction ramps
+            lims = {v: k for v, k in lims.items() if v > 60}
+        covered = sum(lims.values())
+        default = 140 if ref.startswith("A") else 90
+        if lims and covered >= 0.3 * length:
+            # the highest average you can keep while obeying every limit on the way: length / sum(piece / limit)
+            limit = int(sum(lims.values()) / sum(k / v for v, k in lims.items()))
+            src = "osm"
+        else:
+            limit, src = default, "default"
+        print(f"     limits {dict(sorted(((v, round(k, 1)) for v, k in lims.items()), reverse=True))} -> {limit} ({src})")
         out.append({"id": i, "road": road, "ref": ref, "from": f, "to": t, "km_from": kf, "km_to": kt,
                     "len_km": round(length, 3), "a": a, "b": b, "cert": cert == "1",
-                    "limit": 140 if ref.startswith("A") else 90})
+                    "limit": limit, "limit_src": src,
+                    "limits": {str(v): round(k, 2) for v, k in sorted(lims.items(), reverse=True)}})
     json.dump({"source": "bgtoll.bg", "sections": out}, open(OUT, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
     print(f"placed {len(out)} of {len(rows)} sections")
 
