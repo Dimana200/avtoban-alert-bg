@@ -1,0 +1,16 @@
+name: Probe sources
+on: workflow_dispatch
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          cd scripts && python3 - <<'PY'
+          import collections
+          from build_roads import fetch, AREA
+          for q in ['node["highway"="speed_camera"](area.a);out;', 'rel["enforcement"](area.a);out tags;', 'node["enforcement"](area.a);out;']:
+              e = fetch(AREA + q)
+              print('Q', q, len(e))
+              print('  tags', collections.Counter(f"{k}={v}" if k in ('enforcement','maxspeed','highway') else k for x in e for k, v in x.get('tags', {}).items()).most_common(15))
+          PY
