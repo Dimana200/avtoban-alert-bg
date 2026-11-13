@@ -346,6 +346,20 @@ function loadAvgSpeed() {
   }).catch(function () { /* optional */ });
 }
 
+// stationary speed cameras (OpenStreetMap + Столична община)
+function loadCameras() {
+  fetch("cameras.json").then(function (r) { return r.json(); }).then(function (js) {
+    var layer = L.layerGroup().addTo(map);
+    (js.cameras || []).forEach(function (c) {
+      var icon = L.divIcon({ className: "", iconSize: [22, 22], iconAnchor: [11, 11],
+        html: '<div title="Камера за скорост" style="width:22px;height:22px;border-radius:50%;background:#E8590C;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font:700 11px/1 var(--f-display);box-shadow:0 2px 6px rgba(0,0,0,.4)">' + (c.limit || "К") + "</div>" });
+      L.marker([c.lat, c.lon], { icon: icon }).addTo(layer).bindPopup("<b>Камера за скорост</b>" +
+        (c.limit ? "<br>Ограничение " + c.limit + " km/h" : "") + (c.name ? "<br>" + esc(c.name) : "") +
+        "<br><small>Източник: " + (c.src === "sofia" ? "Столична община (планирана)" : "OpenStreetMap") + "</small>");
+    });
+  }).catch(function () { /* optional */ });
+}
+
 function loadReports() {
   // driver reports: a small file the server refreshes every 10 minutes (the app warns live by itself)
   return fetch("reports.json?t=" + Date.now()).then(function (r) { return r.json(); }).then(function (js) {
@@ -423,6 +437,7 @@ function start() {
   setInterval(load, 10 * 60000);
   setInterval(loadReports, 2 * 60000);
   loadAvgSpeed();
+  loadCameras();
   setInterval(stamp, 60000);
 }
 document.addEventListener("DOMContentLoaded", start);
