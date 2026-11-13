@@ -1,0 +1,16 @@
+name: Probe sources
+on: workflow_dispatch
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          curl -4 -sL -A "Mozilla/5.0 (avtoban-alert-bg)" -m 40 -o p.html -w "%{http_code} %{content_type} %{size_download}\n" https://www.bgtoll.bg/vaprosi-i-otgovori/sredna-skorost/wim || echo failed
+          python3 - <<'PY'
+          import re, html
+          s = open('p.html', encoding='utf-8', errors='replace').read()
+          s = re.sub(r'<script.*?</script>|<style.*?</style>', ' ', s, flags=re.S)
+          t = re.sub(r'\s+', ' ', html.unescape(re.sub(r'<[^>]+>', '\n', s)))
+          print(t[:12000])
+          for m in sorted(set(re.findall(r'(?:href|src)="([^"]+\.(?:pdf|xlsx?|csv|json|kml|geojson)[^"]*)"', s)))[:20]: print('FILE', m)
+          PY
