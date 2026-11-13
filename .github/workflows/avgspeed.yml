@@ -1,8 +1,8 @@
-name: Average speed sections
+name: Cameras and average speed sections
 on:
   workflow_dispatch:
   push:
-    paths: ["data/avgspeed_sections.tsv", "scripts/build_avgspeed.py"]
+    paths: ["data/**", "scripts/build_avgspeed.py", "scripts/build_cameras.py"]
 permissions:
   contents: write
 jobs:
@@ -12,7 +12,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: cd scripts && python3 build_avgspeed.py
+      - run: cd scripts && python3 build_cameras.py
       - run: |
           git config user.name "avtoban-bot"; git config user.email "avtoban-bot@users.noreply.github.com"
-          git add site/avgspeed.json
-          git diff --cached --quiet || (git commit -m "Average speed sections placed on the map" && git pull --rebase && git push)
+          git add site/avgspeed.json site/cameras.json
+          git diff --cached --quiet || (git commit -m "Cameras and average speed sections placed on the map" && git pull --rebase && git push)
