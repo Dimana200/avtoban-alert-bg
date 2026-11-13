@@ -5,4 +5,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          curl -sSL -m 40 https://info.meteo.bg/openData/river-runoff | grep -v "^\s*$" | sed 's/^/RAW /' | cut -c1-400
+          curl -sSL -m 40 -X POST -d mydate=2026-11-13 https://info.meteo.bg/openData/river-runoff -o r.html -w "HTTP %{http_code} %{size_download}B\n"
+          python3 - <<'PY'
+          import re,html
+          s=open('r.html',encoding='utf-8',errors='replace').read()
+          print('LINKS', [l for l in sorted(set(re.findall(r'(?:href|src|action)="([^"]+)"', s, re.I)))][:40])
+          t=re.sub(r'<script.*?</script>|<style.*?</style>','',s,flags=re.S|re.I)
+          t=re.sub(r'</tr>','\n',t)
+          t=html.unescape(re.sub(r'<[^>]+>',' | ',t)); t=re.sub(r'(\s*\|\s*)+',' | ',t); t=re.sub(r'[ \t]+',' ',t)
+          i=t.find('Свалете'); print('TEXT', t[max(0,i-200):i+5000])
+          PY
+          for l in $(grep -oE 'href="[^"]*\.csv[^"]*"' r.html | cut -d'"' -f2 | head -2); do echo "CSV $l"; curl -sSL "https://info.meteo.bg/openData/$l" | head -12 | sed 's/^/CSVL /'; done
