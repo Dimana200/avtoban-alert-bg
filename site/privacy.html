@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Поверителност – Avtoban Alert BG</title>
+<meta name="description" content="Политика за поверителност на приложението Avtoban Alert BG">
+<meta name="theme-color" content="#14171C">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@600;700&family=Noto+Sans:wght@400;600&display=swap">
+<style>
+:root {
+  --bg: #F1F2F4; --surface: #FFFFFF; --fg: #14171C; --muted: #5A616E; --line: #D8DBE1;
+  --ok: #2E8B57; --lv1: #F2C200; --lv2: #F07F0E; --lv3: #D7191C; --blue: #1A73E8;
+  --f-display: "Roboto Condensed", "Arial Narrow", Arial, sans-serif;
+  --f-body: "Noto Sans", "Segoe UI", Roboto, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #0F1216; --surface: #191D24; --fg: #ECEEF2; --muted: #A3AAB7; --line: #2C323C; --ok: #4CC38A; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #0F1216; --surface: #191D24; --fg: #ECEEF2; --muted: #A3AAB7; --line: #2C323C; --ok: #4CC38A; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 var(--f-body); }
+.wrap { max-width: 680px; margin: 0 auto; padding-block: calc(20px + env(safe-area-inset-top, 0px)) calc(40px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+a.back { color: var(--muted); text-decoration: none; font-size: 14px; }
+.brand { display: flex; align-items: center; gap: 12px; margin: 14px 0 6px; }
+h1 { font: 700 30px/1.05 var(--f-display); margin: 0; text-wrap: balance; }
+.lead { color: var(--muted); margin: 6px 0 20px; }
+h2 { font: 700 15px/1.2 var(--f-display); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 30px 0 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+.dl { display: block; text-align: center; background: var(--ok); color: #fff; text-decoration: none; border-radius: 14px;
+  padding: 18px; font: 700 22px/1 var(--f-display); letter-spacing: .02em; }
+.dl[aria-disabled="true"] { background: var(--line); color: var(--muted); pointer-events: none; }
+.small { font-size: 14px; color: var(--muted); margin: 10px 0 0; }
+ul.feat { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+ol.steps { margin: 0; padding: 0; list-style: none; counter-reset: s; display: grid; gap: 10px; }
+ol.steps li { counter-increment: s; position: relative; padding: 14px 14px 14px 56px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+ol.steps li::before { content: counter(s); position: absolute; left: 14px; top: 13px; width: 30px; height: 30px; border-radius: 50%;
+  background: var(--fg); color: var(--bg); display: flex; align-items: center; justify-content: center; font: 700 16px/1 var(--f-display); }
+q { quotes: "„" "“"; font-weight: 600; }
+.warn { border-left: 5px solid var(--lv2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="./">← Към картата</a>
+  <div class="brand"><h1>Политика за поверителност</h1></div>
+  <p class="lead">Avtoban Alert BG · в сила от 13 ноември 2026 г.</p>
+
+  <h2>Накратко</h2>
+  <div class="card">Приложението не изисква регистрация и не събира имена, телефонни номера, имейли или контакти. Местоположението се ползва, за да ви предупреждава за опасности по пътя пред вас, и не се съхранява като история на пътуванията ви.</div>
+
+  <h2>Какви данни се ползват и защо</h2>
+  <ul class="feat card" style="padding-left:36px">
+    <li><b>Местоположение (GPS)</b> – само докато сте натиснали „Старт“, за да се изчисляват опасностите и ограничението на скоростта пред вас. То се обработва на телефона и не се изпраща никъде, освен в двата случая по-долу.</li>
+    <li><b>Сигнал от шофьор</b> – когато подадете сигнал (напр. „Катастрофа“), се записват видът му, мястото, посоката, часът и анонимен номер на устройството. Сигналът се вижда от всички шофьори и изтича автоматично (за стационарна камера – до една година след последното потвърждение).</li>
+    <li><b>Брояч на шофьорите</b> – докато приложението е пуснато, на всеки 10 минути се изпраща анонимно „тук съм“ само с грубия район (квадрат около 20 × 40 km) и часа. При „Спри“ записът се изтрива.</li>
+    <li><b>Микрофон</b> – само когато натиснете „Кажи сигнал с глас“ или отговаряте „да/не“. Разпознаването на речта се извършва от услугата за разпознаване на говор на телефона (обикновено Google). Приложението не записва и не пази аудио.</li>
+    <li><b>Показване върху други приложения</b> – само за балончето със скоростта върху навигацията.</li>
+  </ul>
+
+  <h2>Анонимен номер</h2>
+  <div class="card">За сигналите и брояча се използва анонимен вход в Google Firebase. Той създава случаен номер на устройството, който не е свързан с името, имейла или Google профила ви. Ограничението „1 сигнал на минута и 20 на ден“ се пази на самия телефон.</div>
+
+  <h2>Къде се съхраняват</h2>
+  <div class="card">Сигналите и броячът се съхраняват в Google Cloud Firestore в Европейския съюз (регион eur3). Картата и предупрежденията за времето се публикуват от GitHub Pages. Данните не се продават, не се ползват за реклама и не се предоставят на трети лица.</div>
+
+  <h2>Вашите права</h2>
+  <div class="card">Можете по всяко време да спрете приложението („Спри“), да оттеглите разрешенията от настройките на телефона или да го изтриете. Тъй като данните са анонимни, не можем да ги свържем с вас. Ако смятате, че сигнал е неверен, отбележете „Няма го“. За въпроси ни пишете на имейла, посочен в Google Play.</div>
+
+  <p class="small">© 2026 Avtoban Alert BG. Всички права запазени.</p>
+</div>
+</body>
+</html>
