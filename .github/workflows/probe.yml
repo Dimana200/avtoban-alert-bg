@@ -5,18 +5,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          for u in "https://info.meteo.bg/river-runoff" "https://hydro.bg/bg/river-maps/makeMap1.php?noFile=0" "https://hydro.bg/bg/river-maps/other22.js"; do
+          curl -sSL -m 40 https://hydro.bg/bg/t1.php -o t1.html
+          python3 - <<'PY'
+          import re,html
+          s=open('t1.html',encoding='utf-8',errors='replace').read()
+          a=re.findall(r'<area[^>]*>', s, re.I)
+          print('AREAS', len(a)); [print('AREA', html.unescape(x)[:400]) for x in a[:6]]
+          i=s.find('Оперативна информация за речния отток на'); print('RAW', s[i:i+2500].replace('\n',' '))
+          PY
+          for u in "https://info.meteo.bg/openData/river-runoff" "https://info.meteo.bg/openData/rain"; do
           echo "=========== $u"
           curl -sSL -m 40 "$u" -o p.html -w "HTTP %{http_code} %{content_type} %{size_download}B\n"
           python3 - <<'PY'
           import re,html
           s=open('p.html',encoding='utf-8',errors='replace').read()
-          print('LINKS', [l for l in sorted(set(re.findall(r'(?:href|src|action)="([^"]+)"', s, re.I))) if not l.endswith(('.gif','.png'))][:40])
-          print('URLS', sorted(set(re.findall(r'["\'](/?[a-zA-Z0-9_./-]*(?:api|json|csv|data)[a-zA-Z0-9_./?=&-]*)["\']', s)))[:40])
-          t=re.sub(r'<style.*?</style>','',s,flags=re.S|re.I)
-          print('SCRIPTS', ' || '.join(x[:600] for x in re.findall(r'<script[^>]*>(.*?)</script>', t, re.S) if x.strip())[:2500])
-          t=re.sub(r'<script.*?</script>','',t,flags=re.S|re.I)
+          print('LINKS', [l for l in sorted(set(re.findall(r'(?:href|src|action)="([^"]+)"', s, re.I)))][:40])
+          print('JS', ' || '.join(x[:1500] for x in re.findall(r'<script[^>]*>(.*?)</script>', s, re.S) if x.strip())[:3000])
+          t=re.sub(r'<script.*?</script>|<style.*?</style>','',s,flags=re.S|re.I)
           t=html.unescape(re.sub(r'<[^>]+>',' | ',t)); t=re.sub(r'(\s*\|\s*)+',' | ',t); t=re.sub(r'\s+',' ',t)
-          print('TEXT', t[:3000])
+          print('TEXT', t[:2500])
           PY
           done
