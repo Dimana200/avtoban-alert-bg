@@ -5,19 +5,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          for u in \
-            "https://flood-api.open-meteo.com/v1/flood?latitude=42.15&longitude=24.75&daily=river_discharge,river_discharge_max,river_discharge_p75&forecast_days=10&past_days=3" \
-            "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=42.69,42.15&longitude=23.32,24.75&current=european_aqi,pm10,pm2_5,nitrogen_dioxide,ozone,sulphur_dioxide" \
-            "https://firms.modaps.eosdis.nasa.gov/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_Europe_24h.csv" \
-            "https://firms.modaps.eosdis.nasa.gov/data/active_fire/modis-c6.1/csv/MODIS_C6_1_Europe_24h.csv" \
-            "https://www.meteo.bg/bg/hydro" "https://hydro.bg/" "https://www.meteo.bg/bg/hydrology" \
-            "https://eea.government.bg/kav/" "http://eea.government.bg/kav/reports/air/qReport/" \
-            "https://discomap.eea.europa.eu/map/fme/latest/BG_PM10.csv" \
-            "https://effis.jrc.ec.europa.eu/api/" ; do
-            echo "=================== $u"
-            curl -sSL -m 40 -A "Mozilla/5.0 AvtobanAlertBG" -o /tmp/o -w "HTTP %{http_code} %{content_type} %{size_download}B final=%{url_effective}\n" "$u" || true
-            if grep -q "," /tmp/o 2>/dev/null && [[ "$u" == *firms* ]]; then head -3 /tmp/o; echo "BG lines:"; awk -F, 'NR>1 && $1>41.2 && $1<44.25 && $2>22.3 && $2<28.7' /tmp/o | wc -l; awk -F, 'NR>1 && $1>41.2 && $1<44.25 && $2>22.3 && $2<28.7' /tmp/o | head -5;
-            else head -c 1500 /tmp/o | tr -s ' \n' ' '; echo; fi
+          mkdir out
+          for u in "https://meteo.bg/bg/rekiTablitsa" "https://meteo.bg/bg/forecasts/hydro" "https://meteo.bg/bg/rekiKarta" "https://hydro.bg/bg/t1.php"; do
+            f=out/$(echo "$u" | tr -c 'a-zA-Z0-9' _).html
+            curl -sSL -m 40 -A "Mozilla/5.0 AvtobanAlertBG" -o $f -w "== $u HTTP %{http_code} %{size_download}B\n" "$u" || true
           done
-          echo "== links on meteo.bg"
-          curl -sSL -m 30 https://www.meteo.bg/bg | grep -oiE 'href="[^"]*(hydro|хидро|reki|rivers|vod)[^"]*"' | sort -u | head -30
+          curl -s https://meteo.bg/robots.txt > out/robots.txt; cat out/robots.txt | head -40
+      - uses: actions/upload-artifact@v4
+        with: { name: pages, path: out }
