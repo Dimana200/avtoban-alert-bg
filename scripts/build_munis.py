@@ -36,6 +36,16 @@ def main():
     for code, d in nimh_warn.fetch_day("d").items():
         for name in d["munis"]:
             where.setdefault(name, set()).add(code)
+    # the same municipality spelt differently (Вълчи дол / Вълчидол, Добричка / Добрич-селска): use NIMH's spelling
+    compact = lambda n: re.sub(r"[^а-я]", "", n)
+    alias = {"добричка": "добричселска"}
+    by_compact = {compact(n): n for n in where}
+    for m in out:
+        if m["n"] not in where:
+            k = alias.get(compact(m["n"]), compact(m["n"]))
+            hit = by_compact.get(k) or next((n for c, n in by_compact.items() if c.endswith(k) or k.endswith(c)), None)
+            if hit:
+                m["n"] = hit
     for m in out:
         if not m["r"] and len(where.get(m["n"], ())) == 1:
             m["r"] = next(iter(where[m["n"]]))
