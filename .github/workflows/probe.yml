@@ -1,8 +1,8 @@
-name: Check streets (temporary)
+name: Check places (temporary)
 on: workflow_dispatch
 jobs:
   p:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: python3 tests/check_streets.py
+      - run: python3 tests/check_places.py
