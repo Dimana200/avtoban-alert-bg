@@ -5,6 +5,7 @@ Each end of a section is given only as "place (km N+NNN)" on a numbered road. It
   1. km posts (OSM highway=milestone) lying on that road: interpolate between the two posts around km N+NNN;
   2. otherwise the point of the road nearest to the named place;
   3. then snapped to the nearest toll gantry (OSM highway=toll_gantry) on the road, where the cameras are.
+Ends where this fails are placed by hand in data/avgspeed_manual.tsv (with how each was found).
 Writes site/avgspeed.json: [{id, road, ref, from, to, km_from, km_to, len_km, a, b, cert, limit, how}].
 """
 import json, math, os, re
@@ -14,6 +15,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "..", "data", "avgspeed_sections.tsv")
 ROADS = os.path.join(HERE, "..", "site", "roads.json")
 OUT = os.path.join(HERE, "..", "site", "avgspeed.json")
+MANUAL = os.path.join(HERE, "..", "data", "avgspeed_manual.tsv")
 MOTORWAYS = {"Тракия": "A1", "Хемус": "A2", "Струма": "A3", "Марица": "A4", "Черно море": "A5", "Европа": "A6"}
 ON_ROAD_M = 60          # a km post or gantry this close to the road belongs to it
 PLACE_ALIAS = {"яз. Дяково": "Дяково", 'Тунел "Мало Бучино"': "Мало Бучино", "м/у 18 и п.в.Илиянци": "Илиянци"}
@@ -104,12 +106,20 @@ def main():
     print(f"places {len(places)}/{len(names)}, km posts {len(posts)}, gantries {len(gantries)}")
 
     cache = {}
+    manual = {}
+    for l in open(MANUAL, encoding="utf-8"):
+        if l.strip() and not l.startswith("#"):
+            m = l.rstrip("\n").split("\t")
+            manual[(m[0], m[1], float(m[2]))] = ((float(m[3]), float(m[4])), "by hand: " + m[5])
 
     def locate(road, place, k):
         key = (road, place, k)
         if key in cache:
             return cache[key]
         ref, ls = ref_of(road), lines.get(ref_of(road), [])
+        if (ref, place, k) in manual:
+            cache[key] = manual[(ref, place, k)]
+            return cache[key]
         name = PLACE_ALIAS.get(place, place)
         # the place: of several with that name, the one nearest to the road
         cands = sorted(places.get(name, []), key=lambda p: near_road(p, ls)[0])

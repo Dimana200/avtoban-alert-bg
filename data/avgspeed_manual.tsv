@@ -1,0 +1,11 @@
+# Average-speed section ends placed by hand, where the automatic placement fails (no km posts, name not a place, same name elsewhere).
+# road ref	place as in avgspeed_sections.tsv	km	lat	lon	how it was placed
+A1	Кръстина	344.388	42.58925	27.22629	toll gantry by Кръстина; 14.0 km along the road to the Ветрен gantry (official 13.6)
+A1	Ветрен	357.949	42.59337	27.38586	toll gantry 3.5 km from Ветрен (община Бургас), next to km post 360
+A6	м/у 18 и п.в.Илиянци	50.427	42.76549	23.29703	toll gantry 2.3 km east of km post 48; 10.28 km along the road to the Чепинци gantry (official 10.28)
+A6	Чепинци	60.705	42.71975	23.40052	toll gantry by Чепинци
+I-5	Одяланик	11.382	43.75643	25.90658	toll gantry by Одяланик; 22.95 km along the road to the Обретеник gantry (official 23.32)
+I-5	Обретеник	34.704	43.57186	25.82209	toll gantry by Обретеник
+I-5	Тръстеник	25.914	43.63964	25.87203	on the road 14.53 km from the Одяланик gantry (official km difference)
+I-5	Казанлък	199.527	42.61682	25.41723	on the road 7.65 km from the Крън end of Шипка – Крън (official km difference)
+I-5	Ягода	212.716	42.55832	25.54818	on the road 20.84 km from the Крън end of Шипка – Крън (official km difference)
