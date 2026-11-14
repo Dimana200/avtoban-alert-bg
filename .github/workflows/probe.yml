@@ -6,8 +6,17 @@ jobs:
   p:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: python3 tests/probe_mvr.py
       - run: |
-          cd out && git init -q && git checkout -q -b probe-out && git add -A && git -c user.name=ci -c user.email=ci@local commit -qm out
+          mkdir out && cd out
+          dl() { curl -sSL -m 60 -A "Mozilla/5.0 (AvtobanAlertBG)" -o "$1" "https://www.mvr.bg$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1]))" "$2")" -w "$1 %{http_code} %{size_download}\n"; }
+          dl lovech.pdf "/upload/227182/Места и точки за контрол на скоростта със стационарни и мобилни атоматизирани технически средства.pdf"
+          dl silistra1.pdf "/upload/179641/Места и точки за контрол на скоростта.pdf"
+          dl silistra2.pdf "/upload/22196/423c4995-tablicaatc-pdf.pdf"
+          dl sliven.doc "/upload/182784/Места и точки за контрол на скоростта.doc"
+          dl smolyan.pdf "/docs/librariesprovider30/документи-от-пресцентър/6649334e-tochki_za_kotrol_all-pdf.pdf"
+          dl haskovo.html "/haskovo/обществен-ред-и-сигурност/мвр-съветва/полезна-информация/места-и-точки-за-контрол-на-скоростта"
+          dl targovishte.html "/targovishte/обществен-ред-и-сигурност/мвр-съветва/полезна-информация/kamera"
+          dl yambol.html "/yambol/обществен-ред-и-сигурност/мвр-съветва/полезна-информация/разположение-на-стационарни-и-мобилни-камери-за-установяване-на-нарушения-по-здвп-на-територията-на-област-ямбол"
+          for f in haskovo targovishte yambol; do grep -oiE 'href="[^"]+\.(pdf|xlsx?|docx?)"' $f.html | sed "s/^/FILE $f /"; done
+          git init -q && git checkout -q -b probe-out && git add -A && git -c user.name=ci -c user.email=ci@local commit -qm out
           git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" probe-out
