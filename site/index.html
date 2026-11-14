@@ -370,7 +370,7 @@ function loadCameras() {
         html: '<div title="' + (c.t === "red" ? "Камера на светофар" : "Камера за скорост") + '" style="width:22px;height:22px;border-radius:50%;background:' + (c.t === "red" ? "#C2255C" : "#E8590C") + ';color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font:700 11px/1 var(--f-display);box-shadow:0 2px 6px rgba(0,0,0,.4)">' + (c.limit || (c.t === "red" ? "С" : "К")) + "</div>" });
       L.marker([c.lat, c.lon], { icon: icon }).addTo(layer).bindPopup("<b>" + (c.t === "red" ? "Камера на светофар" : "Камера за скорост") + "</b>" +
         (c.limit ? "<br>Ограничение " + c.limit + " km/h" : "") + (c.name ? "<br>" + esc(c.name) : "") +
-        "<br><small>Източник: " + (c.src === "sofia" ? "Столична община (планирана)" : c.src === "mapatlas" ? '<a href="https://mapatlas.eu/camera-index" target="_blank" rel="noopener">MapAtlas / MapMetrics driver reports</a> (CC BY 4.0)' : "OpenStreetMap") + "</small>");
+        "<br><small>Източник: " + (c.src === "sofia" ? "Столична община" : c.src === "mapatlas" ? '<a href="https://mapatlas.eu/camera-index" target="_blank" rel="noopener">MapAtlas / MapMetrics driver reports</a> (CC BY 4.0)' : "OpenStreetMap") + "</small>");
     });
     showLayer("speed"); showLayer("red");
   }).catch(function () { /* optional */ });
