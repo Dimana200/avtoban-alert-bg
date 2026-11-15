@@ -1,21 +1,24 @@
-name: Probe NIMH today (temporary)
+name: Probe warnings sources (temporary)
 on: workflow_dispatch
 jobs:
   p:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
       - run: |
-          cd scripts && python3 -c "
-          import nimh_warn as n
-          d=n.fetch_day('d')
-          for c,v in d.items():
-              w={k:x for k,x in v['munis'].items() if x}
-              if w or v['region']['level']: print('TODAY',c,v['date'],v['issued'],'region',v['region'],'munis',w)
-          print('VRC', d.get('VRC'))
-          "
-          curl -s https://dimana200.github.io/avtoban-alert-bg/hazards.json | python3 -c "
-          import json,sys;h=json.load(sys.stdin)
-          print('HAZ updated',h.get('updated'))
-          print('HAZ warnings',[ (w.get('region') or w.get('r'), w.get('text','')[:80]) for w in h.get('warnings',[])][:10])
-          "
+          for u in "https://feeds.meteoalarm.org/feeds/meteoalarm-legacy-atom-bulgaria" "https://feeds.meteoalarm.org/api/v1/warnings/feeds-bulgaria" "https://www.meteo.bg/bg/warnings" "https://weather.bg/obshtini/index.php?z=d&o=VRC"; do
+            echo "=== $u"; curl -sSL -m 40 -A "Mozilla/5.0 AvtobanAlertBG" "$u" -o p -w "HTTP %{http_code} %{content_type} %{size_download}\n"
+            python3 - <<'PY'
+          import re,html
+          s=open('p',encoding='utf-8',errors='replace').read()
+          if s.lstrip().startswith('{'):
+              print('JSON', s[:2500])
+          elif '<feed' in s[:500] or '<entry' in s:
+              es=re.findall(r'<entry>(.*?)</entry>',s,re.S); print('ENTRIES',len(es))
+              for e in es[:12]:
+                  g=lambda t:(re.search(rf'<{t}[^>]*>(.*?)</{t}>',e,re.S) or [None,''])[1]
+                  print(' E', g('title')[:90],'|',g('cap:areaDesc'),'|',g('cap:event'),'|',g('cap:severity'),'|',g('cap:effective'),g('cap:expires'))
+          else:
+              t=html.unescape(re.sub(r'<[^>]+>',' ',re.sub(r'<script.*?</script>|<style.*?</style>','',s,flags=re.S))); t=re.sub(r'\s+',' ',t)
+              i=t.find('издадена'); print('TEXT', t[max(0,i-300):i+600] if i>=0 else t[:900])
+          PY
+          done
