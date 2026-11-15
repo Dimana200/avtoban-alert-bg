@@ -1,0 +1,21 @@
+name: Probe NIMH today (temporary)
+on: workflow_dispatch
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          cd scripts && python3 -c "
+          import nimh_warn as n
+          d=n.fetch_day('d')
+          for c,v in d.items():
+              w={k:x for k,x in v['munis'].items() if x}
+              if w or v['region']['level']: print('TODAY',c,v['date'],v['issued'],'region',v['region'],'munis',w)
+          print('VRC', d.get('VRC'))
+          "
+          curl -s https://dimana200.github.io/avtoban-alert-bg/hazards.json | python3 -c "
+          import json,sys;h=json.load(sys.stdin)
+          print('HAZ updated',h.get('updated'))
+          print('HAZ warnings',[ (w.get('region') or w.get('r'), w.get('text','')[:80]) for w in h.get('warnings',[])][:10])
+          "
