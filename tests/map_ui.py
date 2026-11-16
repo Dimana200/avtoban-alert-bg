@@ -79,13 +79,33 @@ with sync_playwright() as pw:
     z_road = drive(42.20, 24.90, 85, 90, 90)
     z_mw = drive(42.25, 25.10, 130, 90, 140)
     pg.screenshot(path=out + "/8-drive-motorway.png")
+    # heading east (90): a point 1 km east of the car must be straight above it on the screen
+    rot = pg.evaluate("""() => { var c = meMark.getLatLng(), a = map.latLngToContainerPoint(c), e = map.latLngToContainerPoint([c.lat, c.lng + 0.0123]);
+        return {rotate: canRotate(), bearing: map.getBearing ? map.getBearing() : null, dx: Math.round(e.x - a.x), dy: Math.round(e.y - a.y), car: [Math.round(a.x), Math.round(a.y)]}; }""")
+    print("rotation:", rot)
+    ok &= rot["rotate"] and abs(rot["dx"]) < 15 and rot["dy"] < -60 and rot["car"][1] > 839 * 0.6
     below = pg.evaluate("() => { var q = map.latLngToContainerPoint(meMark.getLatLng()); return [Math.round(q.x), Math.round(q.y), map.getSize().x, map.getSize().y]; }")
+    pg.evaluate("() => { drive(null); return 1; }"); pg.wait_for_timeout(800)
+    pg.screenshot(path=out + "/9-after-stop.png")
+    # a road can still be tapped on the turned map
+    pg.evaluate("() => { drive(42.15, 24.75, 60, 45, 90); return 1; }"); pg.wait_for_timeout(600)
+    pg.evaluate("() => { drive(42.15, 24.75, 60, 45, 90); return 1; }"); pg.wait_for_timeout(600)
+    xy2 = pg.evaluate("""() => { var c = Object.keys(haz.points)[0]; var seg = roads.segments.find(s => s.p === c);
+        var ll = seg.c[Math.floor(seg.c.length / 2)]; map.setView(ll, map.getZoom(), {animate: false}); var q = map.latLngToContainerPoint(ll); var r = document.getElementById('map').getBoundingClientRect();
+        return [r.left + q.x, r.top + q.y]; }""")
+    DRIVE_dragged = pg.evaluate("() => { DRIVE.dragged = Date.now(); follow = false; return 1; }")
+    pg.mouse.click(1, 1)
+    pg.touchscreen.tap(xy2[0], xy2[1]); pg.wait_for_timeout(800)
+    tapped = pg.locator(".leaflet-popup-content").count()
+    pg.screenshot(path=out + "/10-turned-tap.png")
+    print("tap on road with the map turned -> popup:", tapped)
+    ok &= tapped >= 1
     pg.evaluate("() => { drive(null); return 1; }"); pg.wait_for_timeout(800)
     z_off = pg.evaluate("() => map.getZoom()")
     print("heading north: car at", north)
     ok &= north[1] > below[3] * 0.65 and north[1] < below[3] * 0.85
     print(f"drive zoom town {z_town}, open road {z_road}, motorway {z_mw}; car at {below} (heading east -> car left of centre); after stop {z_off}")
-    ok &= z_town == 15 and z_road == 14 and z_mw == 13 and z_off == 10 and below[2] * 0.15 < below[0] < below[2] * 0.4
+    ok &= z_town == 15 and z_road == 14 and z_mw == 13 and z_off == 10
     b.close()
 print("RESULT", "OK" if ok else "FAILED")
 sys.exit(0 if ok else 1)

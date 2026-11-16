@@ -175,6 +175,8 @@ html.app main { grid-template-columns: 1fr; grid-template-rows: 1fr; }
   </aside>
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<!-- turning map for the drive view (heading up); without it the map simply stays north-up -->
+<script src="https://cdn.jsdelivr.net/npm/leaflet-rotate@0.2.8/dist/leaflet-rotate-src.js"></script>
 <script>
 "use strict";
 var TYPES = {
@@ -494,7 +496,9 @@ function layerControl() {
 // Drive view (like Google Maps): while the app's drive mode runs, the app sends the car's position every second.
 // Zoom follows the kind of road: town/village close, open road farther, motorway farthest.
 // The car sits in the lower part of the map, so more of the road ahead is visible. A finger move pauses this for 10 s.
-var DRIVE = { on: false, z: null, want: null, since: 0, dragged: 0 };
+var DRIVE = { on: false, z: null, want: null, since: 0, dragged: 0, b: 0 };
+var ROT_SIGN = -1;   // setBearing direction that puts the heading at the top (checked by tests/map_ui.py)
+function canRotate() { return !!(map && map.setBearing && map.options.rotate); }
 function driveZoom(speed, limit) {
   if ((limit && limit <= 60) || speed < 55) return 15;      // town or village: about 1.5 km on the screen
   if ((limit && limit >= 120) || speed > 100) return 13;    // motorway: about 6 km
@@ -502,7 +506,7 @@ function driveZoom(speed, limit) {
 }
 window.drive = function (lat, lon, speed, heading, limit) {
   if (lat == null) {                                        // drive mode switched off: back to the overview
-    if (DRIVE.on) { DRIVE.on = false; DRIVE.z = null; follow = true; if (meMark) map.setView(meMark.getLatLng(), 10); }
+    if (DRIVE.on) { DRIVE.on = false; DRIVE.z = null; follow = true; DRIVE.b = 0; if (canRotate()) map.setBearing(0); if (meMark) map.setView(meMark.getLatLng(), 10); }
     return;
   }
   var p = L.latLng(lat, lon);
@@ -515,10 +519,16 @@ window.drive = function (lat, lon, speed, heading, limit) {
   if (DRIVE.z == null) DRIVE.z = want;
   if (want !== DRIVE.want) { DRIVE.want = want; DRIVE.since = now; }
   if (want !== DRIVE.z && now - DRIVE.since > 5000) DRIVE.z = want;        // changes only after 5 s, no jumping at every slowdown
-  var z = DRIVE.z, c = map.project(p, z);
-  if (speed > 8 && heading != null) {                       // move the centre ahead of the car: a quarter of the map's height / width
-    var r = heading * Math.PI / 180, sz = map.getSize();
-    c = c.add([Math.sin(r) * sz.x * 0.25, -Math.cos(r) * sz.y * 0.25]);
+  var z = DRIVE.z, c = map.project(p, z), sz = map.getSize();
+  if (speed > 8 && heading != null) {
+    if (canRotate()) {
+      // heading up: turn smoothly (half the way each second, the short way round), ignore GPS noise under 3 degrees
+      var d = ((heading - DRIVE.b + 540) % 360) - 180;
+      if (Math.abs(d) > 3) { DRIVE.b = (DRIVE.b + d * 0.5 + 360) % 360; map.setBearing(ROT_SIGN * DRIVE.b); }
+    }
+    // move the centre ahead of the car, so the car sits in the lower part of the map
+    var r = (canRotate() ? DRIVE.b : heading) * Math.PI / 180, k = canRotate() ? sz.y : null;
+    c = c.add([Math.sin(r) * (k || sz.x) * 0.25, -Math.cos(r) * (k || sz.y) * 0.25]);
   }
   var target = map.unproject(c, z);
   if (map.getZoom() !== z) map.setView(target, z, { animate: true });
@@ -542,7 +552,9 @@ function start() {
   canvas = L.canvas({ padding: 0.3, tolerance: 6 });
   // the map stays over Bulgaria: a swipe meant for the page cannot push it out into the sea
   var BG = L.latLngBounds([40.9, 21.9], [44.6, 29.0]);
-  map = L.map("map", { zoomControl: true, preferCanvas: true, maxBounds: BG, maxBoundsViscosity: 1.0, minZoom: 6 }).setView([42.7, 25.3], 7);
+  var turn = /[?&]app=1/.test(location.search) && !!L.Map.prototype.setBearing;     // the turning map only in the app
+  map = L.map("map", { zoomControl: true, preferCanvas: true, maxBounds: BG, maxBoundsViscosity: 1.0, minZoom: 6,
+    rotate: turn, bearing: 0, touchRotate: false, rotateControl: false, shiftKeyRotate: false }).setView([42.7, 25.3], 7);
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
   document.getElementById("list").addEventListener("click", function (e) {
     var b = e.target.closest("[data-g]"); if (!b) return;
