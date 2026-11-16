@@ -85,6 +85,16 @@ with sync_playwright() as pw:
     print("rotation:", rot)
     ok &= rot["rotate"] and abs(rot["dx"]) < 15 and rot["dy"] < -60 and rot["car"][1] > 839 * 0.6
     below = pg.evaluate("() => { var q = map.latLngToContainerPoint(meMark.getLatLng()); return [Math.round(q.x), Math.round(q.y), map.getSize().x, map.getSize().y]; }")
+    # zoom in by hand while driving: map stays, "Центрирай" appears; pressing it goes back to the car
+    pg.locator(".leaflet-control-zoom-in").tap(); pg.wait_for_timeout(700)
+    z_hand = pg.evaluate("() => map.getZoom()")
+    drive(42.25, 25.12, 130, 90, 140, n=3)
+    stay = pg.evaluate("() => [map.getZoom(), follow, !document.querySelector('.ctr-btn').hidden]")
+    pg.screenshot(path=out + "/9a-zoomed-by-hand.png")
+    pg.locator(".ctr-btn").tap(); pg.wait_for_timeout(1200)
+    back = pg.evaluate("() => [map.getZoom(), follow, !document.querySelector('.ctr-btn').hidden]")
+    print(f"zoom by hand {z_hand}: after 3 s of driving {stay}; after Центрирай {back}")
+    ok &= stay == [14, False, True] and back == [13, True, False]
     pg.evaluate("() => { drive(null); return 1; }"); pg.wait_for_timeout(800)
     pg.screenshot(path=out + "/9-after-stop.png")
     # a road can still be tapped on the turned map
@@ -93,7 +103,7 @@ with sync_playwright() as pw:
     xy2 = pg.evaluate("""() => { var c = Object.keys(haz.points)[0]; var seg = roads.segments.find(s => s.p === c);
         var ll = seg.c[Math.floor(seg.c.length / 2)]; map.setView(ll, map.getZoom(), {animate: false}); var q = map.latLngToContainerPoint(ll); var r = document.getElementById('map').getBoundingClientRect();
         return [r.left + q.x, r.top + q.y]; }""")
-    DRIVE_dragged = pg.evaluate("() => { DRIVE.dragged = Date.now(); follow = false; return 1; }")
+    pg.evaluate("() => { follow = false; return 1; }")
     pg.mouse.click(1, 1)
     pg.touchscreen.tap(xy2[0], xy2[1]); pg.wait_for_timeout(800)
     tapped = pg.locator(".leaflet-popup-content").count()
