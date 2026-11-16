@@ -48,7 +48,7 @@ with sync_playwright() as pw:
     print(f"markers at start {n0}, after hiding cameras {n1}; kept after reload {kept}")
     ok &= n1 < n0 and kept == [False, False, False, False, True]
     # new layers: АПИ events handed over by the app, rivers, fires, air
-    pg.evaluate("() => map.setView([42.7, 25.3], 7)")
+    pg.evaluate("() => { map.setView([42.7, 25.3], 7); return 1; }")
     pg.wait_for_timeout(1500)
     nb = pg.locator(".leaflet-marker-icon").count()
     pg.evaluate("""() => apiEvents([{lat: 42.3, lon: 24.8, type: 'Accident', name: 'катастрофа', text: 'ПТП на АМ Тракия', set: 'danger&c=d01'},
