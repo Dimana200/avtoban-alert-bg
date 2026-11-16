@@ -67,6 +67,24 @@ with sync_playwright() as pw:
     pg.screenshot(path=out + "/6-air.png")
     print(f"chooser boxes {boxes}; markers {nb} -> with АПИ {na} -> АПИ hidden {nc}; rivers/fires {layers}; air municipalities {air}")
     ok &= boxes == 9 and na == nb + 2 and nc == nb and layers["river"] and air and air > 100
+    # small map, large text: the chooser must scroll inside the map and the last box must be reachable
+    pg2 = ctx.new_page()
+    pg2.set_viewport_size({"width": 412, "height": 640})
+    pg2.goto("http://localhost:8000/index.html")
+    pg2.wait_for_timeout(4000)
+    pg2.evaluate("() => { document.documentElement.style.fontSize = '130%'; document.querySelector('.lyr-box').style.fontSize = '19px'; return 1; }")
+    pg2.locator(".lyr-btn").tap(); pg2.wait_for_timeout(300)
+    fitb = pg2.evaluate("""() => { var m = map.getContainer().getBoundingClientRect(), b = document.querySelector('.lyr-box'), r = b.getBoundingClientRect();
+        return {inside: r.bottom <= m.bottom + 1, scrolls: b.scrollHeight > b.clientHeight}; }""")
+    last = pg2.locator('input[data-l="air"]')
+    last.scroll_into_view_if_needed(); pg2.wait_for_timeout(300)
+    last.tap(); pg2.wait_for_timeout(300)
+    got = pg2.evaluate("() => SHOW.air")
+    pg2.screenshot(path=out + "/11-small-chooser.png")
+    print("small map chooser:", fitb, "last box tapped:", got)
+    ok &= fitb["inside"] and got
+    pg2.locator('input[data-l="air"]').tap()      # back off, so the rest of the test is unchanged
+    pg2.close()
     # drive view: zoom by kind of road, car in the lower part, finger pauses it for 10 s
     def drive(lat, lon, v, h, lim, n=7):
         for i in range(n):
