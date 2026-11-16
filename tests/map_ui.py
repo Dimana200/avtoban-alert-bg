@@ -74,6 +74,7 @@ with sync_playwright() as pw:
             pg.wait_for_timeout(1000)
         return pg.evaluate("() => map.getZoom()")
     z_town = drive(42.1435, 24.7495, 40, 0, 50)
+    north = pg.evaluate("() => { var q = map.latLngToContainerPoint(meMark.getLatLng()); return [Math.round(q.x), Math.round(q.y)]; }")
     pg.screenshot(path=out + "/7-drive-town.png")
     z_road = drive(42.20, 24.90, 85, 90, 90)
     z_mw = drive(42.25, 25.10, 130, 90, 140)
@@ -81,8 +82,10 @@ with sync_playwright() as pw:
     below = pg.evaluate("() => { var q = map.latLngToContainerPoint(meMark.getLatLng()); return [Math.round(q.x), Math.round(q.y), map.getSize().x, map.getSize().y]; }")
     pg.evaluate("() => { drive(null); return 1; }"); pg.wait_for_timeout(800)
     z_off = pg.evaluate("() => map.getZoom()")
+    print("heading north: car at", north)
+    ok &= north[1] > below[3] * 0.65 and north[1] < below[3] * 0.85
     print(f"drive zoom town {z_town}, open road {z_road}, motorway {z_mw}; car at {below} (heading east -> car left of centre); after stop {z_off}")
-    ok &= z_town == 15 and z_road == 14 and z_mw == 13 and z_off == 10 and below[0] < below[2] * 0.4
+    ok &= z_town == 15 and z_road == 14 and z_mw == 13 and z_off == 10 and below[2] * 0.15 < below[0] < below[2] * 0.4
     b.close()
 print("RESULT", "OK" if ok else "FAILED")
 sys.exit(0 if ok else 1)
