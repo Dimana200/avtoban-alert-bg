@@ -9,6 +9,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: pip install playwright >/dev/null && python -m playwright install --with-deps chromium >/dev/null
       - run: |
+          for f in rivers fires air; do curl -sf https://dimana200.github.io/avtoban-alert-bg/$f.json -o site/$f.json || echo "no $f"; done
           (cd site && python3 -m http.server 8000 >/dev/null 2>&1 &) ; sleep 2
           mkdir -p /tmp/shots && python3 tests/map_ui.py /tmp/shots; echo "exit=$?" > /tmp/shots/exit.txt
       - name: Screenshots to branch ui-shots

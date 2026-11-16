@@ -47,6 +47,26 @@ with sync_playwright() as pw:
     kept = pg.evaluate("() => [SHOW.ok, SHOW.speed, SHOW.red, SHOW.avg, SHOW.rep]")
     print(f"markers at start {n0}, after hiding cameras {n1}; kept after reload {kept}")
     ok &= n1 < n0 and kept == [False, False, False, False, True]
+    # new layers: АПИ events handed over by the app, rivers, fires, air
+    pg.evaluate("() => map.setView([42.7, 25.3], 7)")
+    pg.wait_for_timeout(1500)
+    nb = pg.locator(".leaflet-marker-icon").count()
+    pg.evaluate("""() => apiEvents([{lat: 42.3, lon: 24.8, type: 'Accident', name: 'катастрофа', text: 'ПТП на АМ Тракия', set: 'danger&c=d01'},
+                                    {lat: 43.087, lon: 25.648, type: 'Roadworks', name: 'ремонт и ограничено движение', text: 'В.Търново - Г.Оряховица', set: 'danger&c=d01'}], Date.now())""")
+    pg.wait_for_timeout(500)
+    na = pg.locator(".leaflet-marker-icon").count()
+    pg.locator(".lyr-btn").tap(); pg.wait_for_timeout(300)
+    boxes = pg.locator(".lyr-box input").count()
+    pg.screenshot(path=out + "/5-chooser-all.png")
+    layers = pg.evaluate("() => ({river: !!LAYERS.river && LAYERS.river.getLayers().length, fire: !!LAYERS.fire && LAYERS.fire.getLayers().length})")
+    pg.locator('input[data-l="api"]').tap(); pg.wait_for_timeout(400)
+    nc = pg.locator(".leaflet-marker-icon").count()
+    pg.locator('input[data-l="air"]').tap(); pg.wait_for_timeout(5000)
+    air = pg.evaluate("() => !!LAYERS.air && LAYERS.air.getLayers().length")
+    pg.locator(".lyr-btn").tap(); pg.wait_for_timeout(300)
+    pg.screenshot(path=out + "/6-air.png")
+    print(f"chooser boxes {boxes}; markers {nb} -> with АПИ {na} -> АПИ hidden {nc}; rivers/fires {layers}; air municipalities {air}")
+    ok &= boxes == 9 and na == nb + 2 and nc == nb and layers["river"] and air and air > 100
     b.close()
 print("RESULT", "OK" if ok else "FAILED")
 sys.exit(0 if ok else 1)

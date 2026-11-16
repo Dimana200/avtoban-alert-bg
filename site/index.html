@@ -199,9 +199,9 @@ var WIDTH = [5, 4, 3, 2];
 var map, canvas, roads = null, haz = null, pts = {}, layer = null, shown = [], userPos = null, userMark = null;
 var showCls = [true, true, true, true];
 // what the viewer chose to see on the map (kept in this browser / this phone)
-var SHOW = { ok: true, speed: true, red: true, avg: true, rep: true };
+var SHOW = { ok: true, speed: true, red: true, avg: true, rep: true, api: true, river: true, fire: true, air: false };
 try { var saved = JSON.parse(localStorage.getItem("layers") || "{}"); for (var k in saved) if (k in SHOW) SHOW[k] = !!saved[k]; } catch (e) { /* no storage: defaults */ }
-var LAYERS = {};   // speed, red, avg, rep -> layerGroup
+var LAYERS = {};   // speed, red, avg, rep, api, river, fire, air -> layerGroup
 function showLayer(k) { var l = LAYERS[k]; if (!l || !map) return; if (SHOW[k]) l.addTo(map); else map.removeLayer(l); }
 
 function css(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
@@ -395,11 +395,83 @@ function loadReports() {
     showLayer("rep");
   }).catch(function () { /* reports are optional */ });
 }
+// a round mark with a letter, drawn as HTML (not on the roads' canvas, so it never takes taps from the roads)
+function dot(bg, txt, size, title) {
+  return L.divIcon({ className: "", iconSize: [size, size], iconAnchor: [size / 2, size / 2],
+    html: '<div title="' + esc(title || "") + '" style="width:' + size + "px;height:" + size + "px;border-radius:50%;background:" + bg +
+      ';color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font:700 ' + Math.round(size * 0.48) +
+      'px/1 var(--f-display);box-shadow:0 2px 6px rgba(0,0,0,.4)">' + txt + "</div>" });
+}
+function setLayer(k, layer) { if (LAYERS[k] && map) map.removeLayer(LAYERS[k]); LAYERS[k] = layer; showLayer(k); }
+
+// АПИ (National Access Point): the app downloads the files itself and hands them to this map
+var API_STYLE = { Accident: ["#E03131", "!"], RoadClosed: ["#212529", "✕"], LaneClosed: ["#495057", "✕"] };
+window.apiEvents = function (list, at) {
+  var layer = L.layerGroup();
+  (list || []).forEach(function (e) {
+    var st = API_STYLE[e.type] || (e.set.indexOf("roadworks") === 0 || e.type === "Roadworks" ? ["#F08C00", "Р"] : ["#F59F00", "⚠"]);
+    L.marker([e.lat, e.lon], { icon: dot(st[0], st[1], 26, e.name) }).addTo(layer)
+      .bindPopup("<b>" + esc(e.name.charAt(0).toUpperCase() + e.name.slice(1)) + "</b>" + (e.text ? "<br>" + esc(e.text) : "") +
+        "<br><small>Източник: АПИ, Национална точка за достъп" + (at ? " · " + new Date(at).toLocaleTimeString("bg-BG", { hour: "2-digit", minute: "2-digit" }) + " ч." : "") + "</small>");
+  });
+  setLayer("api", layer);
+};
+
+// rivers (NIMH, once a day): every station, coloured by our thresholds
+function loadRivers() {
+  fetch("rivers.json?t=" + Date.now()).then(function (r) { return r.json(); }).then(function (js) {
+    var layer = L.layerGroup(), C = ["#1C7ED6", "#FAB005", "#F76707", "#E03131"];
+    (js.stations || []).forEach(function (s) {
+      L.marker([s.lat, s.lon], { icon: dot(C[s.level], "≈", s.level ? 24 : 16, s.river), zIndexOffset: s.level * 100 }).addTo(layer)
+        .bindPopup("<b>р. " + esc(s.river) + " – " + esc(s.place) + "</b><br>Отток: " + s.q + " m³/s" +
+          (s.qavg ? "<br>Средно за станцията: " + s.qavg + " m³/s" : "") + (s.qmax ? "<br>Най-високо измерено: " + s.qmax + " m³/s" : "") +
+          (s.dh != null ? "<br>Промяна на нивото за денонощие: " + s.dh + " cm" : "") +
+          "<br><small>Източник: НИМХ, " + esc(js.date) + ". Оценката „висока вода“ е наша, не официално предупреждение.</small>");
+    });
+    setLayer("river", layer);
+  }).catch(function () { /* optional */ });
+}
+
+// fires seen by satellites in the last 24 hours
+function loadFires() {
+  fetch("fires.json?t=" + Date.now()).then(function (r) { return r.json(); }).then(function (js) {
+    var layer = L.layerGroup();
+    (js.fires || []).forEach(function (f) {
+      L.marker([f.lat, f.lon], { icon: dot(f.n >= 3 ? "#E03131" : "#F76707", "🔥", f.n >= 3 ? 24 : 18, "Пожар") }).addTo(layer)
+        .bindPopup("<b>Пожар, засечен от сателит</b><br>Засичания: " + f.n + "<br>Последно: " +
+          new Date(f.t).toLocaleString("bg-BG", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) +
+          "<br><small>Източник: NASA FIRMS. Може да е и горене на стърнища или отпадъци.</small>");
+    });
+    setLayer("fire", layer);
+  }).catch(function () { /* optional */ });
+}
+
+// air quality per municipality (CAMS forecast), European AQI
+function loadAir() {
+  Promise.all([fetch("air.json?t=" + Date.now()).then(function (r) { return r.json(); }), fetch("munis.json").then(function (r) { return r.json(); })])
+    .then(function (a) {
+      var air = a[0].m || {}, layer = L.layerGroup();
+      var band = function (v) { return v > 100 ? ["#7048E8", "Изключително лошо"] : v > 80 ? ["#C2255C", "Много лошо"] : v > 60 ? ["#E03131", "Лошо"] :
+        v > 40 ? ["#F59F00", "Умерено"] : v > 20 ? ["#94D82D", "Задоволително"] : ["#37B24D", "Добро"]; };
+      a[1].forEach(function (m) {
+        var v = air[m.r + "|" + m.n]; if (!v) return;
+        var b = band(v.aqi);
+        L.marker(m.c, { icon: dot(b[0], v.aqi, 22, m.n) }).addTo(layer)
+          .bindPopup("<b>Въздух – " + esc(m.n.charAt(0).toUpperCase() + m.n.slice(1)) + "</b><br>" + b[1] + " (индекс " + v.aqi + ")" +
+            (v.pm10 != null ? "<br>PM10: " + v.pm10 + " µg/m³" : "") + (v.pm25 != null ? "<br>PM2.5: " + v.pm25 + " µg/m³" : "") +
+            (v.max24 != null ? "<br>Най-лошо до 24 ч.: " + v.max24 : "") + "<br><small>Прогноза CAMS (Copernicus) / Open-Meteo, не измерване.</small>");
+      });
+      setLayer("air", layer);
+    }).catch(function () { /* optional */ });
+}
+
 var meMark = null, follow = true;
 // the position dots use the roads' canvas: a second canvas layer on top would swallow taps on the roads (no popup)
 function layerControl() {
   var NAMES = [["ok", "Пътища без опасност (зелени)"], ["speed", "Камери за скорост"], ["red", "Камери на светофар"],
-               ["avg", "Средна скорост (БГ ТОЛ)"], ["rep", "Сигнали от шофьори"]];
+               ["avg", "Средна скорост (БГ ТОЛ)"], ["rep", "Сигнали от шофьори"],
+               ["api", "Катастрофи, ремонти, затворени пътища (АПИ)"], ["river", "Нива на реките (НИМХ)"],
+               ["fire", "Пожари (сателит NASA)"], ["air", "Качество на въздуха"]];
   var C = L.Control.extend({ options: { position: "topright" }, onAdd: function () {
     var d = L.DomUtil.create("div");
     d.innerHTML = '<button class="lyr-btn" type="button" title="Какво да се показва" aria-label="Какво да се показва на картата" aria-expanded="false">☰</button>' +
@@ -413,7 +485,7 @@ function layerControl() {
       var k = e.target.getAttribute("data-l"); if (!k) return;
       SHOW[k] = e.target.checked;
       try { localStorage.setItem("layers", JSON.stringify(SHOW)); } catch (err) { /* not kept, still works now */ }
-      if (k === "ok") { if (roads && haz) drawRoads(); } else showLayer(k);
+      if (k === "ok") { if (roads && haz) drawRoads(); } else if (k === "air" && SHOW.air && !LAYERS.air) loadAir(); else showLayer(k);
     });
     return d;
   } });
@@ -479,6 +551,8 @@ function start() {
   layerControl();
   loadAvgSpeed();
   loadCameras();
+  loadRivers(); loadFires(); if (SHOW.air) loadAir();          // air needs the big municipality file: only when asked for
+  setInterval(function () { loadRivers(); loadFires(); if (SHOW.air) loadAir(); }, 30 * 60000);
   setInterval(stamp, 60000);
 }
 document.addEventListener("DOMContentLoaded", start);
