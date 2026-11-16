@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Условия за ползване – Avtoban Alert BG</title>
+<meta name="description" content="Условия за ползване на сайта и приложението Avtoban Alert BG">
+<meta name="theme-color" content="#14171C">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@600;700&family=Noto+Sans:wght@400;600&display=swap">
+<style>
+:root {
+  --bg: #F1F2F4; --surface: #FFFFFF; --fg: #14171C; --muted: #5A616E; --line: #D8DBE1;
+  --ok: #2E8B57; --lv1: #F2C200; --lv2: #F07F0E; --lv3: #D7191C; --blue: #1A73E8;
+  --f-display: "Roboto Condensed", "Arial Narrow", Arial, sans-serif;
+  --f-body: "Noto Sans", "Segoe UI", Roboto, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #0F1216; --surface: #191D24; --fg: #ECEEF2; --muted: #A3AAB7; --line: #2C323C; --ok: #4CC38A; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #0F1216; --surface: #191D24; --fg: #ECEEF2; --muted: #A3AAB7; --line: #2C323C; --ok: #4CC38A; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 var(--f-body); }
+.wrap { max-width: 680px; margin: 0 auto; padding-block: calc(20px + env(safe-area-inset-top, 0px)) calc(40px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+a.back { color: var(--muted); text-decoration: none; font-size: 14px; }
+.brand { display: flex; align-items: center; gap: 12px; margin: 14px 0 6px; }
+h1 { font: 700 30px/1.05 var(--f-display); margin: 0; text-wrap: balance; }
+.lead { color: var(--muted); margin: 6px 0 20px; }
+h2 { font: 700 15px/1.2 var(--f-display); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 30px 0 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+.dl { display: block; text-align: center; background: var(--ok); color: #fff; text-decoration: none; border-radius: 14px;
+  padding: 18px; font: 700 22px/1 var(--f-display); letter-spacing: .02em; }
+.dl[aria-disabled="true"] { background: var(--line); color: var(--muted); pointer-events: none; }
+.small { font-size: 14px; color: var(--muted); margin: 10px 0 0; }
+ul.feat { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+ol.steps { margin: 0; padding: 0; list-style: none; counter-reset: s; display: grid; gap: 10px; }
+ol.steps li { counter-increment: s; position: relative; padding: 14px 14px 14px 56px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+ol.steps li::before { content: counter(s); position: absolute; left: 14px; top: 13px; width: 30px; height: 30px; border-radius: 50%;
+  background: var(--fg); color: var(--bg); display: flex; align-items: center; justify-content: center; font: 700 16px/1 var(--f-display); }
+q { quotes: "„" "“"; font-weight: 600; }
+.warn { border-left: 5px solid var(--lv2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="./">← Към картата</a>
+  <div class="brand"><h1>Условия за ползване</h1></div>
+  <p class="lead">Сайтът и приложението Avtoban Alert BG · в сила от 16 ноември 2026 г.</p>
+
+  <h2>Какво е Avtoban Alert BG</h2>
+  <div class="card">Безплатен информационен сайт и приложение за Android, които събират на едно място публични данни за опасности по пътищата в България и сигнали от шофьори. Не е официален източник и не е свързан с държавни институции. Не замества пътните знаци, светофарите, указанията на контролните органи и официалните предупреждения на НИМХ, АПИ и МВР. Пътните знаци и указанията на полицията са с предимство пред всичко, което показва или казва приложението.</div>
+
+  <h2>Безопасност при шофиране</h2>
+  <div class="card warn">Настройте приложението преди да тръгнете. Не пипайте и не гледайте телефона, докато карате. Законът забранява да държите телефона в ръка по време на шофиране. Предупрежденията се казват на глас, а сигнали може да подадете с глас. Карайте според условията на пътя, дори когато приложението казва „Няма опасности напред“.</div>
+
+  <h2>Точност на данните</h2>
+  <ul class="feat card" style="padding-left:36px">
+    <li>Данните идват от НИМХ, Агенция „Пътна инфраструктура“, БГ ТОЛ, Столична община, NASA FIRMS, Copernicus CAMS / Open-Meteo, OpenStreetMap, MapAtlas / MapMetrics и от шофьорите. Те може да закъсняват, да са непълни или грешни.</li>
+    <li>Някои оценки са наши, а не официални: цветовете на пътните участъци, „висока вода“ при реките, качеството на въздуха (прогноза, не измерване), пожарите от сателит (може да е и горене на стърнища).</li>
+    <li>Списъкът с камерите не е пълен и не е официален. Той служи да ви напомня ограничението. Отговорността да спазвате ограниченията на скоростта навсякъде е ваша.</li>
+  </ul>
+
+  <h2>Сигнали от шофьори</h2>
+  <div class="card">Подавайте само сигнали за неща, които виждате в момента. Забранено е умишлено подаване на неверни сигнали, масово подаване и всякаква злоупотреба. Сигналите са анонимни, изтичат автоматично и се премахват, когато други шофьори отбележат „Няма го“. Можем да премахваме сигнали и да ограничаваме подаването без предупреждение.</div>
+
+  <h2>Отговорност</h2>
+  <div class="card">Сайтът и приложението се предоставят безплатно и „както са“, без гаранция, че са непрекъснато достъпни, пълни или точни. Доколкото позволява приложимото право, не носим отговорност за вреди, глоби, закъснения или пропуснати ползи, настъпили от ползването им или от доверяване на показаната информация. Това не ограничава отговорността при умисъл или груба небрежност, нито отговорността, която законът не позволява да се изключи.</div>
+
+  <h2>Авторски права</h2>
+  <div class="card">Кодът, дизайнът и текстовете на сайта и приложението са защитени. Не могат да се копират без писмено разрешение. Данните от външните източници остават на техните собственици и се ползват при техните условия (напр. OpenStreetMap – ODbL, MapAtlas / MapMetrics – CC BY 4.0).</div>
+
+  <h2>Промени</h2>
+  <div class="card">Условията може да се променят. Новата версия важи от датата, посочена горе. Ако продължите да ползвате сайта или приложението след промяната, приемате новите условия.</div>
+
+  <h2>Поверителност</h2>
+  <div class="card">Как се ползват местоположението и другите данни е описано в <a href="privacy.html">Политиката за поверителност</a>.</div>
+
+  <p class="small">© 2026 Avtoban Alert BG. Всички права запазени. · <a href="privacy.html">Поверителност</a></p>
+</div>
+</body>
+</html>
