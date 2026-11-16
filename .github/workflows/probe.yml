@@ -5,8 +5,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          for f in cameras.json hazards.json index.html; do
-            echo "== $f"; curl -sI "https://dimana200.github.io/avtoban-alert-bg/$f" | grep -iE "^(etag|last-modified|cache-control|age|x-cache):"
-            et=$(curl -sI "https://dimana200.github.io/avtoban-alert-bg/$f" | tr -d '\r' | grep -i '^etag:' | cut -d' ' -f2-)
-            echo "conditional -> $(curl -s -o /dev/null -w '%{http_code} %{size_download}B' -H "If-None-Match: $et" "https://dimana200.github.io/avtoban-alert-bg/$f")"
+          for f in cameras.json hazards.json; do
+            echo "== $f $(curl -sI "https://dimana200.github.io/avtoban-alert-bg/$f" | tr -d '\r' | grep -iE '^(etag|last-modified):' | tr '\n' ' ')"
           done
