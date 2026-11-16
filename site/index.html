@@ -491,11 +491,45 @@ function layerControl() {
   } });
   new C().addTo(map);
 }
+// Drive view (like Google Maps): while the app's drive mode runs, the app sends the car's position every second.
+// Zoom follows the kind of road: town/village close, open road farther, motorway farthest.
+// The car sits in the lower part of the map, so more of the road ahead is visible. A finger move pauses this for 10 s.
+var DRIVE = { on: false, z: null, want: null, since: 0, dragged: 0 };
+function driveZoom(speed, limit) {
+  if ((limit && limit <= 60) || speed < 55) return 15;      // town or village: about 1.5 km on the screen
+  if ((limit && limit >= 120) || speed > 100) return 13;    // motorway: about 6 km
+  return 14;                                                // open road: about 3 km
+}
+window.drive = function (lat, lon, speed, heading, limit) {
+  if (lat == null) {                                        // drive mode switched off: back to the overview
+    if (DRIVE.on) { DRIVE.on = false; DRIVE.z = null; follow = true; if (meMark) map.setView(meMark.getLatLng(), 10); }
+    return;
+  }
+  var p = L.latLng(lat, lon);
+  if (!meMark) meMark = L.circleMarker(p, { renderer: canvas, interactive: false, radius: 9, color: "#fff", weight: 3, fillColor: "#1E66F5", fillOpacity: 1 }).addTo(map);
+  else meMark.setLatLng(p);
+  var now = Date.now();
+  if (!DRIVE.on) { DRIVE.on = true; follow = true; }
+  if (!follow) { if (now - DRIVE.dragged < 10000) return; follow = true; }
+  var want = driveZoom(speed, limit);
+  if (DRIVE.z == null) DRIVE.z = want;
+  if (want !== DRIVE.want) { DRIVE.want = want; DRIVE.since = now; }
+  if (want !== DRIVE.z && now - DRIVE.since > 5000) DRIVE.z = want;        // changes only after 5 s, no jumping at every slowdown
+  var z = DRIVE.z, c = map.project(p, z);
+  if (speed > 8 && heading != null) {                       // move the centre ahead of the car: car at about 3/4 of the height
+    var r = heading * Math.PI / 180, d = map.getSize().y * 0.25;
+    c = c.add([Math.sin(r) * d, -Math.cos(r) * d]);
+  }
+  var target = map.unproject(c, z);
+  if (map.getZoom() !== z) map.setView(target, z, { animate: true });
+  else map.panTo(target, { animate: true, duration: 0.9, easeLinearity: 1 });
+};
 function appMode() {
   document.documentElement.classList.add("app");
   setTimeout(function () { map.invalidateSize(); }, 50);
-  map.on("dragstart", function () { follow = false; });
+  map.on("dragstart", function () { follow = false; DRIVE.dragged = Date.now(); });
   if (navigator.geolocation) navigator.geolocation.watchPosition(function (pos) {
+    if (DRIVE.on) return;                                   // the app moves the map while driving
     var p = [pos.coords.latitude, pos.coords.longitude];
     if (!meMark) {
       meMark = L.circleMarker(p, { renderer: canvas, interactive: false, radius: 9, color: "#fff", weight: 3, fillColor: "#1E66F5", fillOpacity: 1 }).addTo(map);

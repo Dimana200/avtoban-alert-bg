@@ -67,6 +67,22 @@ with sync_playwright() as pw:
     pg.screenshot(path=out + "/6-air.png")
     print(f"chooser boxes {boxes}; markers {nb} -> with АПИ {na} -> АПИ hidden {nc}; rivers/fires {layers}; air municipalities {air}")
     ok &= boxes == 9 and na == nb + 2 and nc == nb and layers["river"] and air and air > 100
+    # drive view: zoom by kind of road, car in the lower part, finger pauses it for 10 s
+    def drive(lat, lon, v, h, lim, n=7):
+        for i in range(n):
+            pg.evaluate(f"() => {{ drive({lat} + {i} * 0.0003, {lon}, {v}, {h}, {lim}); return 1; }}")
+            pg.wait_for_timeout(1000)
+        return pg.evaluate("() => map.getZoom()")
+    z_town = drive(42.1435, 24.7495, 40, 0, 50)
+    pg.screenshot(path=out + "/7-drive-town.png")
+    z_road = drive(42.20, 24.90, 85, 90, 90)
+    z_mw = drive(42.25, 25.10, 130, 90, 140)
+    pg.screenshot(path=out + "/8-drive-motorway.png")
+    below = pg.evaluate("() => { var q = map.latLngToContainerPoint(meMark.getLatLng()); return [Math.round(q.x), Math.round(q.y), map.getSize().x, map.getSize().y]; }")
+    pg.evaluate("() => { drive(null); return 1; }"); pg.wait_for_timeout(800)
+    z_off = pg.evaluate("() => map.getZoom()")
+    print(f"drive zoom town {z_town}, open road {z_road}, motorway {z_mw}; car at {below} (heading east -> car left of centre); after stop {z_off}")
+    ok &= z_town == 15 and z_road == 14 and z_mw == 13 and z_off == 10 and below[0] < below[2] * 0.4
     b.close()
 print("RESULT", "OK" if ok else "FAILED")
 sys.exit(0 if ok else 1)
