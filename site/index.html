@@ -390,10 +390,12 @@ function loadReports() {
       var t = f.t, up = f.up || 0, down = f.down || 0;
       var exp = new Date(f.exp);
       if (!REPORT_NAMES[t] || exp < new Date() || (down >= 2 && down > up)) return;
+      var sure = up >= 1;      // confirmed by another driver; unconfirmed ones are paler, dashed and not spoken by the app
       var icon = L.divIcon({ className: "", iconSize: [30, 30], iconAnchor: [15, 15],
-        html: '<div style="width:30px;height:30px;border-radius:50%;background:#7B2FF7;color:#fff;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font:700 14px/1 var(--f-display);box-shadow:0 2px 6px rgba(0,0,0,.4)">' + REPORT_LETTER[t] + "</div>" });
+        html: '<div style="width:30px;height:30px;border-radius:50%;background:#7B2FF7;color:#fff;border:3px ' + (sure ? "solid" : "dashed") + ' #fff;opacity:' + (sure ? 1 : 0.6) + ';display:flex;align-items:center;justify-content:center;font:700 14px/1 var(--f-display);box-shadow:0 2px 6px rgba(0,0,0,.4)">' + REPORT_LETTER[t] + "</div>" });
       L.marker([f.lat, f.lon], { icon: icon }).addTo(reportLayer)
-        .bindPopup("<b>Сигнал от шофьор: " + esc(REPORT_NAMES[t]) + "</b><br>Потвърдили: " + up + " · Няма го: " + down +
+        .bindPopup("<b>Сигнал от шофьор: " + esc(REPORT_NAMES[t]) + "</b>" + (sure ? "" : " <i>(непотвърден)</i>") +
+          "<br>Потвърдили: " + up + " · Няма го: " + down +
           "<br>Валиден до " + exp.toLocaleTimeString("bg-BG", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Sofia" }) + " ч.");
     });
     showLayer("rep");
