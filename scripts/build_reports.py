@@ -17,22 +17,6 @@ def num(x):
     return float(x.get("doubleValue", x.get("integerValue", 0))) if x else 0.0
 
 
-def count_drivers():
-    """Apps that said "here" in the last 12 minutes (they do every 10). A count query costs ~1 read per 1000."""
-    since = (datetime.now(timezone.utc) - timedelta(minutes=12)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    q = {"structuredAggregationQuery": {"aggregations": [{"alias": "n", "count": {}}],
-         "structuredQuery": {"from": [{"collectionId": "presence"}],
-                             "where": {"fieldFilter": {"field": {"fieldPath": "t"}, "op": "GREATER_THAN", "value": {"timestampValue": since}}}}}}
-    try:
-        req = urllib.request.Request(URL.replace(":runQuery", ":runAggregationQuery"), data=json.dumps(q).encode(),
-                                     headers={"Content-Type": "application/json", "User-Agent": common.UA})
-        rows = json.load(urllib.request.urlopen(req, timeout=60))
-        return int(rows[0]["result"]["aggregateFields"]["n"]["integerValue"])
-    except Exception as e:  # noqa: BLE001 - the count is optional
-        print("driver count unavailable:", e)
-        return None
-
-
 def main():
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     q = {"structuredQuery": {"from": [{"collectionId": "reports"}],
@@ -52,10 +36,9 @@ def main():
             continue
         out.append({"id": d["name"].rsplit("/", 1)[1], "t": t, "lat": round(num(f.get("lat")), 5), "lon": round(num(f.get("lon")), 5),
                     "exp": f["exp"]["timestampValue"], "up": up, "down": down})
-    drivers = count_drivers()
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
-    json.dump({"updated": now, "drivers": drivers, "reports": out}, open(OUT, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
-    print(f"reports valid now: {len(out)}; drivers with the app now: {drivers}")
+    json.dump({"updated": now, "reports": out}, open(OUT, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
+    print(f"reports valid now: {len(out)}")
 
 
 if __name__ == "__main__":

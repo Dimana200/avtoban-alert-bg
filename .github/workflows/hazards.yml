@@ -58,6 +58,14 @@ jobs:
       - name: Driver reports (one Firestore query for everybody)
         run: |
           cd scripts && python3 build_reports.py || curl -fsS https://dimana200.github.io/avtoban-alert-bg/reports.json -o ../site/reports.json || echo '{"reports":[]}' > ../site/reports.json
+      - name: Unchanged files keep their old date (phones and browsers then get "not modified" and download nothing)
+        run: |
+          cd site
+          for f in $(find . -type f -name '*.*' | sed 's|^\./||'); do
+            hdr=$(curl -sf -o /tmp/live -D - "https://dimana200.github.io/avtoban-alert-bg/$f") || continue
+            lm=$(printf '%s' "$hdr" | tr -d '\r' | grep -i '^last-modified:' | cut -d' ' -f2-)
+            [ -n "$lm" ] && cmp -s /tmp/live "$f" && touch -d "$lm" "$f" || true
+          done
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

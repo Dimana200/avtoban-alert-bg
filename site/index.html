@@ -323,13 +323,12 @@ function stamp() {
   var t = new Date(haz.updated), min = Math.round((Date.now() - t) / 60000);
   el.className = "upd" + (min > 90 ? " stale" : "");
   el.innerHTML = "Обновено <b>" + t.toLocaleTimeString("bg-BG", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Sofia" }) + " ч.</b> българско време (преди " + Math.max(0, min) + " мин.) · " + roads.roads.length + " пътя" +
-    (drivers != null ? " · 👥 <b>" + drivers.toLocaleString("bg-BG") + "</b> шофьори с приложението сега" : "");
+    "";
 }
-var drivers = null;   // app users now (like Blitzer.de), counted by the server every 15 minutes
 function load() {
   return Promise.all([
     roads ? roads : fetch("roads.json").then(function (r) { return r.json(); }),
-    fetch("hazards.json?t=" + Date.now()).then(function (r) { return r.json(); })
+    fetch("hazards.json", { cache: "no-cache" }).then(function (r) { return r.json(); })
   ]).then(function (res) {
     if (!roads) {
       roads = res[0];
@@ -384,8 +383,7 @@ function loadCameras() {
 
 function loadReports() {
   // driver reports: a small file the server refreshes every 10 minutes (the app warns live by itself)
-  return fetch("reports.json?t=" + Date.now()).then(function (r) { return r.json(); }).then(function (js) {
-    if (typeof js.drivers === "number") { drivers = js.drivers; stamp(); }
+  return fetch("reports.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (js) {
     if (reportLayer) map.removeLayer(reportLayer);
     reportLayer = LAYERS.rep = L.layerGroup();
     (js.reports || []).forEach(function (f) {
@@ -425,7 +423,7 @@ window.apiEvents = function (list, at) {
 
 // rivers (NIMH, once a day): every station, coloured by our thresholds
 function loadRivers() {
-  fetch("rivers.json?t=" + Date.now()).then(function (r) { return r.json(); }).then(function (js) {
+  fetch("rivers.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (js) {
     var layer = L.layerGroup(), C = ["#1C7ED6", "#FAB005", "#F76707", "#E03131"];
     (js.stations || []).forEach(function (s) {
       L.marker([s.lat, s.lon], { icon: dot(C[s.level], "≈", s.level ? 24 : 16, s.river), zIndexOffset: s.level * 100 }).addTo(layer)
@@ -440,7 +438,7 @@ function loadRivers() {
 
 // fires seen by satellites in the last 24 hours
 function loadFires() {
-  fetch("fires.json?t=" + Date.now()).then(function (r) { return r.json(); }).then(function (js) {
+  fetch("fires.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (js) {
     var layer = L.layerGroup();
     (js.fires || []).forEach(function (f) {
       L.marker([f.lat, f.lon], { icon: dot(f.n >= 3 ? "#E03131" : "#F76707", "🔥", f.n >= 3 ? 24 : 18, "Пожар") }).addTo(layer)
@@ -454,7 +452,7 @@ function loadFires() {
 
 // air quality per municipality (CAMS forecast), European AQI
 function loadAir() {
-  Promise.all([fetch("air.json?t=" + Date.now()).then(function (r) { return r.json(); }), fetch("munis.json").then(function (r) { return r.json(); })])
+  Promise.all([fetch("air.json", { cache: "no-cache" }).then(function (r) { return r.json(); }), fetch("munis.json").then(function (r) { return r.json(); })])
     .then(function (a) {
       var air = a[0].m || {}, layer = L.layerGroup();
       var band = function (v) { return v > 100 ? ["#7048E8", "Изключително лошо"] : v > 80 ? ["#C2255C", "Много лошо"] : v > 60 ? ["#E03131", "Лошо"] :
