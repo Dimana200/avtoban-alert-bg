@@ -125,7 +125,7 @@ html.app main { grid-template-columns: 1fr; grid-template-rows: 1fr; }
 .ctr-btn[hidden] { display: none; }
 .lyr-box b { font: 700 13px/1 var(--f-display); letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
 .lyr-box label { display: flex; align-items: center; gap: 10px; cursor: pointer; min-height: 28px; }
-.lyr-box input { width: 20px; height: 20px; accent-color: var(--ok); }
+.lyr-box input { width: 20px; height: 20px; flex-shrink: 0; accent-color: var(--ok); }
 .chip { border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 999px; padding: 6px 11px; font: 600 13px/1 var(--f-body); cursor: pointer; }
 .chip[aria-pressed="false"] { opacity: .45; text-decoration: line-through; }
 .chip:focus-visible { outline: 3px solid var(--lv2); outline-offset: 2px; }
