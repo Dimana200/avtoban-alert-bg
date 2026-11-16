@@ -78,8 +78,9 @@ with sync_playwright() as pw:
         return {inside: r.bottom <= m.bottom + 1, scrolls: b.scrollHeight > b.clientHeight}; }""")
     last = pg2.locator('input[data-l="air"]')
     last.scroll_into_view_if_needed(); pg2.wait_for_timeout(300)
+    before = pg2.evaluate("() => SHOW.air")
     last.tap(); pg2.wait_for_timeout(300)
-    got = pg2.evaluate("() => SHOW.air")
+    got = pg2.evaluate("() => SHOW.air") != before
     pg2.screenshot(path=out + "/11-small-chooser.png")
     print("small map chooser:", fitb, "last box tapped:", got)
     ok &= fitb["inside"] and got
