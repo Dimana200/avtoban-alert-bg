@@ -1,0 +1,27 @@
+#!/bin/bash
+# Avtoban Alert BG relay server, one-time setup (Ubuntu). Typed once in the LightNode console:
+#   curl -sL dimana200.github.io/avtoban-alert-bg/r|bash
+# After this the server updates its own script from GitHub every 5 minutes; no login is needed again.
+set -e
+mkdir -p /opt/relay /var/www/relay
+curl -fsSL https://raw.githubusercontent.com/Dimana200/avtoban-alert-bg/main/tools/relay/run.sh -o /opt/relay/run.sh
+chmod +x /opt/relay/run.sh
+( crontab -l 2>/dev/null | grep -v /opt/relay/ ; echo "*/5 * * * * /opt/relay/run.sh > /var/www/relay/log.txt 2>&1" ) | crontab -
+cat > /etc/systemd/system/relay-web.service <<'EOT'
+[Unit]
+Description=Avtoban Alert BG relay files
+After=network-online.target
+[Service]
+ExecStart=/usr/bin/python3 -m http.server 80 --directory /var/www/relay
+Restart=always
+[Install]
+WantedBy=multi-user.target
+EOT
+systemctl daemon-reload
+systemctl enable --now relay-web
+command -v ufw >/dev/null && ufw allow 80/tcp >/dev/null 2>&1 || true
+/opt/relay/run.sh > /var/www/relay/log.txt 2>&1 || true
+echo
+echo "=============================="
+echo " AVTOBAN RELAY: OK"
+echo "=============================="
