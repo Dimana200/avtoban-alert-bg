@@ -116,6 +116,10 @@ h2 { font: 700 15px/1.2 var(--f-display); text-transform: uppercase; letter-spac
 .dist { font-variant-numeric: tabular-nums; text-transform: none; }
 html.app header, html.app aside { display: none; }
 html.app main { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+/* the app lays its own buttons over the map: keep the map's controls clear of them */
+html.app .leaflet-top { top: var(--app-top, 0px); }
+html.app .leaflet-bottom { bottom: var(--app-bottom, 0px); }
+html.app .leaflet-control-zoom { display: none; }
 .lyr-btn { width: 40px; height: 40px; border-radius: 10px; border: 2px solid rgba(0,0,0,.25); background: var(--surface); color: var(--fg); font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .lyr-box { background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-top: 6px; box-shadow: var(--shadow); font: 14px/1.3 var(--f-body); display: grid; gap: 8px; min-width: 210px; }
 .lyr-box[hidden] { display: none; }
@@ -499,7 +503,7 @@ function layerControl() {
                ["fire", "Пожари (сателит NASA)"], ["air", "Качество на въздуха"]];
   var C = L.Control.extend({ options: { position: "topright" }, onAdd: function () {
     var d = L.DomUtil.create("div");
-    d.innerHTML = '<button class="lyr-btn" type="button" title="Какво да се показва" aria-label="Какво да се показва на картата" aria-expanded="false">☰</button>' +
+    d.innerHTML = '<button class="lyr-btn" type="button" title="Какво да се показва" aria-label="Какво да се показва на картата" aria-expanded="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></svg></button>' +
       '<div class="lyr-box" hidden><b>Покажи на картата</b>' + NAMES.map(function (n) {
         return '<label><input type="checkbox" data-l="' + n[0] + '"' + (SHOW[n[0]] ? " checked" : "") + "> " + n[1] + "</label>";
       }).join("") + "</div>";
@@ -532,7 +536,7 @@ var DRIVE = { on: false, z: null, want: null, since: 0, b: 0, auto: false, last:
 var centerBtn = null;
 function showCenter(v) { if (centerBtn) centerBtn.hidden = !v; }
 function centerControl() {
-  var C = L.Control.extend({ options: { position: "bottomright" }, onAdd: function () {
+  var C = L.Control.extend({ options: { position: "bottomleft" }, onAdd: function () {
     var b = L.DomUtil.create("button", "ctr-btn");
     b.type = "button"; b.hidden = true; b.innerHTML = "◎ Центрирай"; b.setAttribute("aria-label", "Върни картата на колата");
     L.DomEvent.disableClickPropagation(b);
@@ -577,12 +581,22 @@ window.drive = function (lat, lon, speed, heading, limit) {
     }
     // move the centre ahead of the car, so the car sits in the lower part of the map
     var r = (canRotate() ? DRIVE.b : heading) * Math.PI / 180, k = canRotate() ? sz.y : null;
-    c = c.add([Math.sin(r) * (k || sz.x) * 0.25, -Math.cos(r) * (k || sz.y) * 0.25]);
+    // in the app the top strip and the bottom buttons cover part of the map: the car sits low in the part that is seen
+    var ahead = k ? Math.max(0, 0.25 * k + 0.25 * APP_INSET.top - 0.75 * APP_INSET.bottom) : null;
+    c = c.add([Math.sin(r) * (ahead != null ? ahead : sz.x * 0.25), -Math.cos(r) * (ahead != null ? ahead : sz.y * 0.25)]);
   }
   var target = map.unproject(c, z);
   if (map.getZoom() !== z) { DRIVE.auto = true; map.setView(target, z, { animate: true }); }
   else map.panTo(target, { animate: true, duration: 0.9, easeLinearity: 1 });
 };
+// the app tells the page how much of the map its own buttons cover (top and bottom, in CSS pixels)
+window.insets = function (top, bottom) {
+  var r = document.documentElement.style;
+  r.setProperty("--app-top", top + "px"); r.setProperty("--app-bottom", bottom + "px");
+  APP_INSET = { top: top, bottom: bottom };
+  if (DRIVE.on && follow && DRIVE.last) window.drive.apply(null, DRIVE.last);
+};
+var APP_INSET = { top: 0, bottom: 0 };
 function appMode() {
   document.documentElement.classList.add("app");
   setTimeout(function () { map.invalidateSize(); }, 50);
