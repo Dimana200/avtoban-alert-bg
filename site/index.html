@@ -514,7 +514,9 @@ function layerControl() {
     function fit() {
       if (box.hidden) return;
       var m = map.getContainer().getBoundingClientRect(), b = box.getBoundingClientRect();
-      box.style.maxHeight = Math.max(120, m.bottom - b.top - 12) + "px";
+      // in the app the bottom buttons and the "+" lie over the lower part of the map: stop above them
+      var low = APP_INSET.bottom ? APP_INSET.bottom + 100 : 12;
+      box.style.maxHeight = Math.max(120, m.bottom - b.top - low) + "px";
     }
     btn.addEventListener("click", function () { box.hidden = !box.hidden; btn.setAttribute("aria-expanded", String(!box.hidden)); box.style.maxHeight = ""; fit(); });
     window.addEventListener("resize", fit);
@@ -583,7 +585,7 @@ window.drive = function (lat, lon, speed, heading, limit) {
     // move the centre ahead of the car, so the car sits in the lower part of the map
     var r = (canRotate() ? DRIVE.b : heading) * Math.PI / 180, k = canRotate() ? sz.y : null;
     // in the app the top strip and the bottom buttons cover part of the map: the car sits low in the part that is seen
-    var ahead = k ? Math.max(0, 0.25 * k + 0.25 * APP_INSET.top - 0.75 * APP_INSET.bottom) : null;
+    var ahead = k ? Math.max(0, 0.25 * k + 0.25 * APP_INSET.cover - 0.75 * APP_INSET.bottom) : null;
     c = c.add([Math.sin(r) * (ahead != null ? ahead : sz.x * 0.25), -Math.cos(r) * (ahead != null ? ahead : sz.y * 0.25)]);
   }
   var target = map.unproject(c, z);
@@ -591,13 +593,14 @@ window.drive = function (lat, lon, speed, heading, limit) {
   else map.panTo(target, { animate: true, duration: 0.9, easeLinearity: 1 });
 };
 // the app tells the page how much of the map its own buttons cover (top and bottom, in CSS pixels)
-window.insets = function (top, bottom) {
+// top = where the map's own buttons start; cover = how far down the app's strip covers the map (the car sits below it)
+window.insets = function (top, bottom, cover) {
   var r = document.documentElement.style;
   r.setProperty("--app-top", top + "px"); r.setProperty("--app-bottom", bottom + "px");
-  APP_INSET = { top: top, bottom: bottom };
+  APP_INSET = { top: top, bottom: bottom, cover: cover == null ? top : cover };
   if (DRIVE.on && follow && DRIVE.last) window.drive.apply(null, DRIVE.last);
 };
-var APP_INSET = { top: 0, bottom: 0 };
+var APP_INSET = { top: 0, bottom: 0, cover: 0 };
 function appMode() {
   document.documentElement.classList.add("app");
   setTimeout(function () { map.invalidateSize(); }, 50);
