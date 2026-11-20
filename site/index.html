@@ -513,6 +513,8 @@ function layerControl() {
     // the list scrolls inside the map when it is taller than the map (small screens, large text)
     function fit() {
       if (box.hidden) return;
+      // while driving the app's speed strip lies under this button: the list opens below the strip
+      box.style.marginTop = Math.max(0, APP_INSET.cover + 8 - btn.getBoundingClientRect().bottom) + "px";
       var m = map.getContainer().getBoundingClientRect(), b = box.getBoundingClientRect();
       // in the app the bottom buttons and the "+" lie over the lower part of the map: stop above them
       var low = APP_INSET.bottom ? APP_INSET.bottom + 100 : 12;
