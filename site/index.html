@@ -185,6 +185,7 @@ html.app .leaflet-control-zoom { display: none; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <!-- turning map for the drive view (heading up); without it the map simply stays north-up -->
 <script src="https://cdn.jsdelivr.net/npm/leaflet-rotate@0.2.8/dist/leaflet-rotate-src.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/protomaps-leaflet@5.1.0/dist/protomaps-leaflet.js"></script>
 <script>
 "use strict";
 var TYPES = {
@@ -616,6 +617,25 @@ function appMode() {
     if (follow) map.panTo(p, { animate: true });
   }, function () {}, { enableHighAccuracy: true, maximumAge: 5000 });
 }
+// The base map: our own vector map of Bulgaria (OpenStreetMap data, Protomaps build) from Cloudflare R2.
+// If it cannot be loaded, the OpenStreetMap tiles as before.
+var MAP_FILE = "https://pub-c6b1176858a7454780f1fd9cd784b107.r2.dev/bg.pmtiles";
+var OSM_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+function osmTiles() {
+  return L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: OSM_ATTR }).addTo(map);
+}
+function baseMap() {
+  if (!window.protomapsL) { osmTiles(); return; }
+  var layer;
+  try {
+    layer = protomapsL.leafletLayer({ url: MAP_FILE, flavor: "light", lang: "bg", maxDataZoom: 14,
+      attribution: OSM_ATTR + ' · <a href="https://protomaps.com">Protomaps</a>' }).addTo(map);
+  } catch (e) { osmTiles(); return; }
+  // the file must answer a small range request; otherwise fall back to the tiles
+  fetch(MAP_FILE, { headers: { Range: "bytes=0-15" } }).then(function (r) {
+    if (!r.ok) throw new Error(r.status);
+  }).catch(function () { map.removeLayer(layer); osmTiles(); });
+}
 function start() {
   canvas = L.canvas({ padding: 0.3, tolerance: 6 });
   // the map stays over Bulgaria: a swipe meant for the page cannot push it out into the sea
@@ -623,7 +643,7 @@ function start() {
   var turn = /[?&]app=1/.test(location.search) && !!L.Map.prototype.setBearing;     // the turning map only in the app
   map = L.map("map", { zoomControl: true, preferCanvas: true, maxBounds: BG, maxBoundsViscosity: 1.0, minZoom: 6,
     rotate: turn, bearing: 0, touchRotate: false, rotateControl: false, shiftKeyRotate: false }).setView([42.7, 25.3], 7);
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
+  baseMap();
   document.getElementById("list").addEventListener("click", function (e) {
     var b = e.target.closest("[data-g]"); if (!b) return;
     var g = shown[+b.getAttribute("data-g")];
