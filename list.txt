@@ -1,0 +1,10 @@
+6394515 tile Пътища {"type":"tile","src":"osm"}
+6394765 tile Сателитна снимка {"type":"tile","src":"mapbox.satellite"}
+6402710 line УКПТП 2021-2022 {"type":"pg","dbtype":"pg","src":"ukptp_2021_2022_line"}
+6403610 line УКПТП 2022-2023 {"type":"pg","dbtype":"pg","src":"ukptp_2022_2023_line"}
+6404895 point Точка на УКПТП 2021-2022 {"type":"pg","dbtype":"pg","src":"ukptp_2021_2022_points_along"}
+6404896 point Точка на УКПТП 2022-2023 {"type":"pg","dbtype":"pg","src":"ukptp_2022_2023_line_generate"}
+7068142 point Точка на УКПТП 2023-2024 {"type":"pg","dbtype":"pg","src":"ukptp_2023_2024_point"}
+7068145 line УКПТП 2023-2024 {"type":"pg","dbtype":"pg","src":"ukptp_2023_2024_line"}
+7705008 point Точка на УКПТП 2024-2025 {"type":"file","src":"\/2026\/UKPTP\/UKPTP_2025_P.shp","name":"UKPTP_2025_P.shp"
+7705009 line УКПТП 2024-2025 {"type":"file","src":"\/2026\/UKPTP\/UKPTP_2025_L.shp","name":"UKPTP_2025_L.shp"
