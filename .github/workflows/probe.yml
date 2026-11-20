@@ -1,5 +1,7 @@
 name: Probe (temporary)
 on: workflow_dispatch
+permissions:
+  contents: write
 jobs:
   p:
     runs-on: ubuntu-latest
@@ -14,5 +16,6 @@ jobs:
             curl -s -m 60 "https://api.giscloud.com/1/layers/$id/features.json?geometry=geojson&epsg=4326&perpage=5000" -o out/f_$id.json
             echo "$id $(wc -c < out/f_$id.json) bytes; $(head -c 300 out/f_$id.json)"
           done
-      - uses: actions/upload-artifact@v4
-        with: { name: ukptp, path: out }
+      - run: |
+          cd out && git init -q && git checkout -q -b probe-out && git add -A && git -c user.name=ci -c user.email=ci@local commit -qm out
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" probe-out
