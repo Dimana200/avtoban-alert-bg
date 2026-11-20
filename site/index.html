@@ -633,6 +633,13 @@ function baseMap() {
     region = protomapsL.leafletLayer({ url: REGION_FILE, flavor: "light", lang: "bg", maxDataZoom: 8, zIndex: 1, attribution: attr }).addTo(map);
     layer = protomapsL.leafletLayer({ url: MAP_FILE, zIndex: 2, flavor: "light", lang: "bg", maxDataZoom: 14,
       attribution: attr }).addTo(map);
+    // the ready-made style leaves out the names of city quarters (кв. Аспарухово, ж.к. Дружба…): add them
+    if (protomapsL.CenteredTextSymbolizer && layer.labelRules) layer.labelRules.push({
+      dataLayer: "places", minzoom: 12,
+      symbolizer: new protomapsL.CenteredTextSymbolizer({ labelProps: ["name:bg", "name"], fill: "#4a4f5c", stroke: "#ffffff", width: 2,
+        font: "600 12px sans-serif" }),
+      filter: function (z, f) { return f.props.kind === "neighbourhood" || f.props.kind === "macrohood"; }
+    });
   } catch (e) { osmTiles(); return; }
   // the file must answer a small range request; otherwise fall back to the tiles
   fetch(MAP_FILE, { headers: { Range: "bytes=0-15" } }).then(function (r) {
