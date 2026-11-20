@@ -1,0 +1,22 @@
+name: Map tiles for Bulgaria (size probe)
+on: workflow_dispatch
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: pmtiles CLI
+        run: |
+          curl -sSL -o p.tgz https://github.com/protomaps/go-pmtiles/releases/download/v1.22.3/go-pmtiles_1.22.3_Linux_x86_64.tar.gz
+          tar xzf p.tgz pmtiles && ./pmtiles version
+      - name: Newest Protomaps build
+        id: b
+        run: |
+          key=$(curl -sS https://build-metadata.protomaps.dev/builds.json | python3 -c "import json,sys; b=json.load(sys.stdin); print(sorted(x['key'] for x in b)[-1])")
+          echo "key=$key" >> "$GITHUB_OUTPUT"; echo "build: $key"
+      - name: Extract Bulgaria at several max zooms
+        run: |
+          for z in 13 14 15; do
+            ./pmtiles extract "https://build.protomaps.com/${{ steps.b.outputs.key }}" bg-z$z.pmtiles --bbox=22.3,41.2,28.7,44.3 --maxzoom=$z --download-threads=8
+            ls -l bg-z$z.pmtiles
+          done
+          ls -l *.pmtiles | tee sizes.txt
