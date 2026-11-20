@@ -20,6 +20,9 @@ jobs:
           ./pmtiles extract "https://build.protomaps.com/$key" bg.pmtiles --bbox=20.0,39.5,31.0,45.5 --maxzoom=14 --download-threads=8
           ./pmtiles show bg.pmtiles | head -20
           ls -l bg.pmtiles
+          # a light overview of the whole region for zoomed-out views (no grey edges around Bulgaria)
+          ./pmtiles extract "https://build.protomaps.com/$key" region.pmtiles --bbox=8.0,32.0,40.0,53.0 --maxzoom=8 --download-threads=8
+          ls -l region.pmtiles
       - name: Upload to R2
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -32,4 +35,5 @@ jobs:
           [ ${#id} -eq 32 ] || { echo "R2_ACCOUNT_ID does not look right (length ${#id})"; exit 1; }
           ep="https://$id.r2.cloudflarestorage.com"
           aws s3 cp bg.pmtiles s3://avtoban-map/bg.pmtiles --endpoint-url "$ep" --content-type application/octet-stream --only-show-errors
+          aws s3 cp region.pmtiles s3://avtoban-map/region.pmtiles --endpoint-url "$ep" --content-type application/octet-stream --only-show-errors
           aws s3 ls s3://avtoban-map/ --endpoint-url "$ep"
