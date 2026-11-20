@@ -36,6 +36,17 @@ jobs:
                       info = await pg.evaluate("() => ({pm: !!window.protomapsL, layers: Object.values(map._layers).map(l => l.constructor && (l._url || (l.options && l.options.url) || '')).filter(Boolean)})")
                       print(name, info, logs[:8])
                       await pg.screenshot(path="shots/" + name + ".png")
+                  pg = await b.new_page(viewport={"width": 390, "height": 780}, color_scheme="dark")
+                  await pg.route("https://dimana200.github.io/avtoban-alert-bg/**", local)
+                  errs = []
+                  pg.on("pageerror", lambda e: errs.append(str(e)))
+                  await pg.goto("https://dimana200.github.io/avtoban-alert-bg/index.html?app=1"); await pg.wait_for_timeout(4000)
+                  await pg.evaluate("insets(150, 130)")
+                  for i in range(6):
+                      await pg.evaluate("i => drive(42.1446 + i*0.0004, 24.7496 + i*0.0007, 70, 55, 50)", i); await pg.wait_for_timeout(1000)
+                  await pg.wait_for_timeout(5000)
+                  print("drive", errs[:5], await pg.evaluate("() => map.getBearing ? map.getBearing() : 'no-rotate'"))
+                  await pg.screenshot(path="shots/drive-dark.png")
                   await b.close()
           asyncio.run(main())
           PY
