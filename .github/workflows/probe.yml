@@ -5,6 +5,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          for u in "https://api.giscloud.com/1/maps/2608163.json" "https://api.giscloud.com/1/maps/2608163/layers.json" "https://editor.giscloud.com/rest/1/maps/2608163/layers.json" "https://editor.giscloud.com/rest/1/maps/2608163.json"; do
-            echo "== $u"; curl -s -m 30 -A "Mozilla/5.0" "$u" | head -c 3000; echo
+          mkdir out
+          curl -s -m 30 "https://api.giscloud.com/1/maps/2608163/layers.json?perpage=50" -o out/layers.json
+          python3 -c "
+          import json;d=json.load(open('out/layers.json'))
+          for l in d['data']: print(l['id'], l['type'], l['name'], l['source'][:80])" | tee out/list.txt
+          for id in $(python3 -c "import json;[print(l['id']) for l in json.load(open('out/layers.json'))['data'] if l['type']!='tile']"); do
+            curl -s -m 60 "https://api.giscloud.com/1/layers/$id/features.json?geometry=geojson&epsg=4326&perpage=5000" -o out/f_$id.json
+            echo "$id $(wc -c < out/f_$id.json) bytes; $(head -c 300 out/f_$id.json)"
           done
+      - uses: actions/upload-artifact@v4
+        with: { name: ukptp, path: out }
