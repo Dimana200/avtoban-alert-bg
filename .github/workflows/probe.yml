@@ -1,10 +1,10 @@
-name: Probe cache headers (temporary)
+name: Probe (temporary)
 on: workflow_dispatch
 jobs:
   p:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          for f in cameras.json hazards.json; do
-            echo "== $f $(curl -sI "https://dimana200.github.io/avtoban-alert-bg/$f" | tr -d '\r' | grep -iE '^(etag|last-modified):' | tr '\n' ' ')"
+          for u in "https://api.giscloud.com/1/maps/2608163.json" "https://api.giscloud.com/1/maps/2608163/layers.json" "https://editor.giscloud.com/rest/1/maps/2608163/layers.json" "https://editor.giscloud.com/rest/1/maps/2608163.json"; do
+            echo "== $u"; curl -s -m 30 -A "Mozilla/5.0" "$u" | head -c 3000; echo
           done
