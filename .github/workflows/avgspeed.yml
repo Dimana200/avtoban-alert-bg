@@ -1,8 +1,10 @@
 name: Cameras and average speed sections
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "17 3 2 * *"      # monthly: a new accident-concentration list (ДАБДП) is published once a year
   push:
-    paths: ["data/**", "scripts/build_avgspeed.py", "scripts/build_cameras.py", "scripts/build_munis.py"]
+    paths: ["data/**", "scripts/build_avgspeed.py", "scripts/build_cameras.py", "scripts/build_munis.py", "scripts/build_ukptp.py"]
 permissions:
   contents: write
 jobs:
@@ -14,7 +16,8 @@ jobs:
       - run: cd scripts && python3 build_avgspeed.py
       - run: cd scripts && python3 build_cameras.py
       - run: cd scripts && python3 build_munis.py
+      - run: cd scripts && python3 build_ukptp.py
       - run: |
           git config user.name "avtoban-bot"; git config user.email "avtoban-bot@users.noreply.github.com"
-          git add site/avgspeed.json site/cameras.json site/munis.json
+          git add site/avgspeed.json site/cameras.json site/munis.json site/ukptp.json
           git diff --cached --quiet || (git commit -m "Cameras and average speed sections placed on the map" && git pull --rebase && git push)

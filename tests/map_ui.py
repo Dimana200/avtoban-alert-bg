@@ -58,7 +58,7 @@ with sync_playwright() as pw:
     pg.locator(".lyr-btn").tap(); pg.wait_for_timeout(300)
     boxes = pg.locator(".lyr-box input").count()
     pg.screenshot(path=out + "/5-chooser-all.png")
-    layers = pg.evaluate("() => ({river: !!LAYERS.river && LAYERS.river.getLayers().length, fire: !!LAYERS.fire && LAYERS.fire.getLayers().length})")
+    layers = pg.evaluate("() => ({river: !!LAYERS.river && LAYERS.river.getLayers().length, fire: !!LAYERS.fire && LAYERS.fire.getLayers().length, ukptp: !!LAYERS.ukptp && LAYERS.ukptp.getLayers().length})")
     pg.locator('input[data-l="api"]').tap(); pg.wait_for_timeout(400)
     nc = pg.locator(".leaflet-marker-icon").count()
     pg.locator('input[data-l="air"]').tap(); pg.wait_for_timeout(5000)
@@ -66,7 +66,7 @@ with sync_playwright() as pw:
     pg.locator(".lyr-btn").tap(); pg.wait_for_timeout(300)
     pg.screenshot(path=out + "/6-air.png")
     print(f"chooser boxes {boxes}; markers {nb} -> with АПИ {na} -> АПИ hidden {nc}; rivers/fires {layers}; air municipalities {air}")
-    ok &= boxes == 9 and na == nb + 2 and nc == nb and layers["river"] and air and air > 100
+    ok &= boxes == 10 and na == nb + 2 and nc == nb and layers["river"] and layers["ukptp"] == 96 and air and air > 100
     # small map, large text: the chooser must scroll inside the map and the last box must be reachable
     pg2 = ctx.new_page()
     pg2.set_viewport_size({"width": 412, "height": 640})
