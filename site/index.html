@@ -120,6 +120,8 @@ html.app main { grid-template-columns: 1fr; grid-template-rows: 1fr; }
 html.app .leaflet-top { top: var(--app-top, 0px); }
 html.app .leaflet-bottom { bottom: var(--app-bottom, 0px); }
 html.app .leaflet-control-zoom { display: none; }
+/* the layers list lies over the map's other buttons ("Центрирай") */
+html.app .leaflet-top { z-index: 1001; }
 .lyr-btn { width: 40px; height: 40px; border-radius: 10px; border: 2px solid rgba(0,0,0,.25); background: var(--surface); color: var(--fg); font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .lyr-box { background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-top: 6px; box-shadow: var(--shadow); font: 14px/1.3 var(--f-body); display: grid; gap: 8px; min-width: 210px; }
 .lyr-box[hidden] { display: none; }
@@ -514,15 +516,17 @@ function layerControl() {
     function fit() {
       if (box.hidden) return;
       // while driving the app's speed strip lies under this button: the list opens below the strip
-      box.style.marginTop = Math.max(0, APP_INSET.cover + 8 - btn.getBoundingClientRect().bottom) + "px";
+      box.style.marginTop = window.AvtobanApp ? "0px" : Math.max(0, APP_INSET.cover + 8 - btn.getBoundingClientRect().bottom) + "px";
       var m = map.getContainer().getBoundingClientRect(), b = box.getBoundingClientRect();
       // in the app the bottom buttons and the "+" lie over the lower part of the map: stop above them
-      var low = APP_INSET.bottom ? APP_INSET.bottom + 100 : 12;
+      var low = APP_INSET.bottom ? APP_INSET.bottom + (window.AvtobanApp ? 12 : 100) : 12;
       box.style.maxHeight = Math.max(120, m.bottom - b.top - low) + "px";
     }
-    btn.addEventListener("click", function () { box.hidden = !box.hidden; btn.setAttribute("aria-expanded", String(!box.hidden)); box.style.maxHeight = ""; fit(); });
+    // in the app: while the list is open the app hides its own buttons over the map, so the whole list can be used
+    function tellApp() { try { if (window.AvtobanApp) AvtobanApp.layersOpen(!box.hidden); } catch (e) { /* older app */ } }
+    btn.addEventListener("click", function () { box.hidden = !box.hidden; btn.setAttribute("aria-expanded", String(!box.hidden)); box.style.maxHeight = ""; tellApp(); fit(); });
     window.addEventListener("resize", fit);
-    map.on("click", function () { if (!box.hidden) { box.hidden = true; btn.setAttribute("aria-expanded", "false"); } });
+    map.on("click", function () { if (!box.hidden) { box.hidden = true; btn.setAttribute("aria-expanded", "false"); tellApp(); } });
     box.addEventListener("change", function (e) {
       var k = e.target.getAttribute("data-l"); if (!k) return;
       SHOW[k] = e.target.checked;
