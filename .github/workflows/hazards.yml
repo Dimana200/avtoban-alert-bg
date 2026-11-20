@@ -67,7 +67,7 @@ jobs:
           if [ "${{ github.event_name }}" = "push" ]; then echo "changed=true" >> "$GITHUB_OUTPUT"; echo "code pushed"; exit 0; fi
           changed=false
           for f in $(find . -type f | sed 's|^\./||'); do
-            if ! curl -sf -o /tmp/live "https://dimana200.github.io/avtoban-alert-bg/$f"; then echo "new: $f"; changed=true; continue; fi
+            if ! curl -sf --max-time 60 --retry 2 -o /tmp/live "https://dimana200.github.io/avtoban-alert-bg/$f"; then echo "new: $f"; changed=true; continue; fi
             cmp -s /tmp/live "$f" && continue
             # fires.json / reports.json carry the time of the run: the same content with a new time is no change
             if { [ "$f" = fires.json ] || [ "$f" = reports.json ]; } && python3 -c "import json,sys; a,b=(json.load(open(x)) for x in sys.argv[1:]); [d.pop('updated',None) for d in (a,b)]; sys.exit(a!=b)" /tmp/live "$f" 2>/dev/null; then
