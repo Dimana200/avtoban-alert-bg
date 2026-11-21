@@ -616,6 +616,10 @@ function placeIcon(i, on) {
       (on ? "#fff" : "#F08C00") + ';display:flex;align-items:center;justify-content:center;font:700 ' + (on ? 16 : 13) +
       'px sans-serif;box-sizing:border-box;box-shadow:0 2px 6px rgba(0,0,0,.4)">' + (i + 1) + "</div>" });
 }
+// the app looks for places around what the map shows
+map.on("moveend", function () {
+  try { if (window.AvtobanApp && AvtobanApp.center) { var c = map.getCenter(); AvtobanApp.center(c.lat, c.lng, map.getZoom()); } } catch (e) { /* older app */ }
+});
 window.clearPlaces = function () { placeMarks.forEach(function (m) { map.removeLayer(m); }); placeMarks = []; placeSel = -1; };
 window.showPlaces = function (list, me) {
   window.clearPlaces();
