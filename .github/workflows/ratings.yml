@@ -1,0 +1,20 @@
+name: Place ratings
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "4,19,34,49 * * * *"     # every 15 minutes; the hazards run then puts a changed file on the site
+permissions:
+  contents: write
+concurrency: ratings
+jobs:
+  ratings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: cd scripts && python3 build_ratings.py
+      - run: |
+          git config user.name "avtoban-bot"; git config user.email "avtoban-bot@users.noreply.github.com"
+          git add state/ratings.json
+          # the file's "updated" time alone is no change: commit only when the ratings changed
+          if ! git diff --cached --quiet; then git add site/ratings.json; git commit -m "Place ratings"; git pull --rebase && git push; fi
