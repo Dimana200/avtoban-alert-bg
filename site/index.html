@@ -639,8 +639,9 @@ function baseMap() {
   var layer, region;
   try {
     var attr = OSM_ATTR + ' · <a href="https://protomaps.com">Protomaps</a>';     // the same text on both: shown once
-    region = protomapsL.leafletLayer({ url: REGION_FILE, flavor: "light", lang: "bg", maxDataZoom: 8, zIndex: 1, attribution: attr }).addTo(map);
-    layer = protomapsL.leafletLayer({ url: MAP_FILE, zIndex: 2, flavor: "light", lang: "bg", maxDataZoom: 14,
+    region = protomapsL.leafletLayer({ url: REGION_FILE, flavor: "light", lang: "bg", maxDataZoom: 8, maxZoom: 8, zIndex: 1, attribution: attr }).addTo(map);
+    // only one of the two maps is drawn at a time: the overview up to zoom 8, Bulgaria from 9 (half the work for the phone)
+    layer = protomapsL.leafletLayer({ url: MAP_FILE, zIndex: 2, minZoom: 9, flavor: "light", lang: "bg", maxDataZoom: 14,
       attribution: attr }).addTo(map);
     // the ready-made style leaves out the names of city quarters (кв. Аспарухово, ж.к. Дружба…): add them
     if (protomapsL.CenteredTextSymbolizer && layer.labelRules) layer.labelRules.push({
