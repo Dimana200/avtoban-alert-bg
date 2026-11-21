@@ -4,7 +4,7 @@
 Only ratings newer than the last run are read (Firestore reads stay small however many ratings there are).
 Each device's latest rating per place is kept in state/ratings.json under a hash, not the device id.
 """
-import hashlib, json, os, urllib.request
+import hashlib, json, os, urllib.error, urllib.request
 from datetime import datetime, timezone
 import common  # noqa: F401 - IPv4-only patch
 
@@ -30,7 +30,14 @@ def main():
         st = {"until": "2026-01-01T00:00:00Z", "r": {}}
     new = 0
     while True:
-        docs = query(st["until"])
+        try:
+            docs = query(st["until"])
+        except urllib.error.HTTPError as e:
+            if e.code != 403:
+                raise
+            # the Firestore rules for ratings are not published yet: nothing to read, keep an empty list
+            print("ratings not readable yet (Firestore rules without 'ratings')")
+            docs = []
         for d in docs:
             f = d["fields"]
             p = f.get("p", {}).get("stringValue", "")
