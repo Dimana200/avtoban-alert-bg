@@ -598,6 +598,16 @@ window.drive = function (lat, lon, speed, heading, limit) {
   if (map.getZoom() !== z) { DRIVE.auto = true; map.setView(target, z, { animate: true }); }
   else map.panTo(target, { animate: true, duration: 0.9, easeLinearity: 1 });
 };
+// the app's search: show the chosen place on the map
+var placeMark = null;
+window.showPlace = function (lat, lon, name) {
+  if (placeMark) map.removeLayer(placeMark);
+  placeMark = L.circleMarker([lat, lon], { radius: 11, color: "#fff", weight: 3, fillColor: "#F08C00", fillOpacity: 1 })
+    .bindTooltip(name, { permanent: true, direction: "top", offset: [0, -10] }).addTo(map);
+  follow = false; showCenter(true);
+  map.setView([lat, lon], 16);
+};
+window.hidePlace = function () { if (placeMark) { map.removeLayer(placeMark); placeMark = null; } };
 // the app tells the page how much of the map its own buttons cover (top and bottom, in CSS pixels)
 // top = where the map's own buttons start; cover = how far down the app's strip covers the map (the car sits below it)
 window.insets = function (top, bottom, cover) {
