@@ -1,58 +1,30 @@
 name: Map probe
 on: workflow_dispatch
-permissions:
-  contents: write
 jobs:
   p:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: npm view protomaps-leaflet time --json | tail -6
-      - name: Render the map page
-        run: |
+      - run: |
           pip install -q playwright && python -m playwright install --with-deps chromium >/dev/null
-          cd site && (python3 -m http.server 8000 >/dev/null 2>&1 &) && sleep 1 && cd ..
-          mkdir -p shots
           cat > r.py <<'PY'
-          import asyncio
+          import asyncio, os
           from playwright.async_api import async_playwright
+          async def local(route):
+              path = route.request.url.split("/avtoban-alert-bg/", 1)[1].split("?")[0] or "index.html"
+              f = os.path.join("site", path)
+              if os.path.isfile(f): await route.fulfill(path=f)
+              else: await route.fulfill(status=404, body="")
           async def main():
               async with async_playwright() as p:
-                  b = await p.chromium.launch()
-                  import os
-                  async def local(route):
-                      path = route.request.url.split("/avtoban-alert-bg/", 1)[1].split("?")[0] or "index.html"
-                      f = os.path.join("site", path)
-                      if os.path.isfile(f): await route.fulfill(path=f)
-                      else: await route.fulfill(status=404, body="")
-                  for name, url, view in [("bg", "https://dimana200.github.io/avtoban-alert-bg/index.html?app=1", None), ("plovdiv", "https://dimana200.github.io/avtoban-alert-bg/index.html?app=1", ([42.1446, 24.7496], 15)), ("sofia13", "https://dimana200.github.io/avtoban-alert-bg/index.html?app=1", ([42.6977, 23.3219], 13))]:
-                      pg = await b.new_page(viewport={"width": 390, "height": 780}, color_scheme="light")
-                      await pg.route("https://dimana200.github.io/avtoban-alert-bg/**", local)
-                      logs = []
-                      pg.on("console", lambda m: logs.append(m.type + ": " + m.text))
-                      pg.on("pageerror", lambda e: logs.append("ERR " + str(e)))
-                      await pg.goto(url); await pg.wait_for_timeout(5000)
-                      if view: await pg.evaluate("v => map.setView(v[0], v[1])", list(view)); await pg.wait_for_timeout(6000)
-                      info = await pg.evaluate("() => ({pm: !!window.protomapsL, layers: Object.values(map._layers).map(l => l.constructor && (l._url || (l.options && l.options.url) || '')).filter(Boolean)})")
-                      print(name, info, logs[:8])
-                      await pg.screenshot(path="shots/" + name + ".png")
-                  pg = await b.new_page(viewport={"width": 390, "height": 780}, color_scheme="dark")
+                  b = await p.chromium.launch(); pg = await b.new_page(viewport={"width": 390, "height": 780})
                   await pg.route("https://dimana200.github.io/avtoban-alert-bg/**", local)
-                  errs = []
-                  pg.on("pageerror", lambda e: errs.append(str(e)))
-                  await pg.goto("https://dimana200.github.io/avtoban-alert-bg/index.html?app=1"); await pg.wait_for_timeout(4000)
-                  await pg.evaluate("insets(150, 130)")
-                  for i in range(6):
-                      await pg.evaluate("i => drive(42.1446 + i*0.0004, 24.7496 + i*0.0007, 70, 55, 50)", i); await pg.wait_for_timeout(1000)
-                  await pg.wait_for_timeout(5000)
-                  print("drive", errs[:5], await pg.evaluate("() => map.getBearing ? map.getBearing() : 'no-rotate'"))
-                  await pg.screenshot(path="shots/drive-dark.png")
+                  await pg.goto("https://dimana200.github.io/avtoban-alert-bg/index.html?app=1"); await pg.wait_for_timeout(3000)
+                  print("maxZoom", await pg.evaluate("map.getMaxZoom()"))
+                  for z in (8, 12, 16, 18):
+                      await pg.evaluate("z => map.setView([43.2, 27.9], z)", z); await pg.wait_for_timeout(1500)
+                      print("zoom", z, "->", await pg.evaluate("map.getZoom()"))
                   await b.close()
           asyncio.run(main())
           PY
           python r.py
-      - name: Screenshots to branch map-shots
-        if: always()
-        run: |
-          cd shots && git init -q && git checkout -q -b map-shots && git add -A && git -c user.name=ci -c user.email=ci@local commit -qm shots
-          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" map-shots
