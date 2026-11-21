@@ -616,10 +616,6 @@ function placeIcon(i, on) {
       (on ? "#fff" : "#F08C00") + ';display:flex;align-items:center;justify-content:center;font:700 ' + (on ? 16 : 13) +
       'px sans-serif;box-sizing:border-box;box-shadow:0 2px 6px rgba(0,0,0,.4)">' + (i + 1) + "</div>" });
 }
-// the app looks for places around what the map shows
-map.on("moveend", function () {
-  try { if (window.AvtobanApp && AvtobanApp.center) { var c = map.getCenter(); AvtobanApp.center(c.lat, c.lng, map.getZoom()); } } catch (e) { /* older app */ }
-});
 window.clearPlaces = function () { placeMarks.forEach(function (m) { map.removeLayer(m); }); placeMarks = []; placeSel = -1; };
 window.showPlaces = function (list, me) {
   window.clearPlaces();
@@ -708,6 +704,10 @@ function start() {
   map = L.map("map", { zoomControl: true, preferCanvas: true, maxZoom: 18, maxBounds: BG, maxBoundsViscosity: 1.0, minZoom: 6,
     rotate: turn, bearing: 0, touchRotate: false, rotateControl: false, shiftKeyRotate: false }).setView([42.7, 25.3], 7);
   baseMap();
+  // the app looks for places around what the map shows (the map exists only from here on)
+  map.on("moveend", function () {
+    try { if (window.AvtobanApp && AvtobanApp.center) { var c = map.getCenter(); AvtobanApp.center(c.lat, c.lng, map.getZoom()); } } catch (e) { /* older app */ }
+  });
   document.getElementById("list").addEventListener("click", function (e) {
     var b = e.target.closest("[data-g]"); if (!b) return;
     var g = shown[+b.getAttribute("data-g")];
