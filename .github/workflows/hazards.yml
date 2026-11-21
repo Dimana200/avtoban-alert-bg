@@ -76,6 +76,12 @@ jobs:
             echo "changed: $f"; changed=true
           done
           echo "changed=$changed" >> "$GITHUB_OUTPUT"
+      # a change to the page itself: open it in a browser first; a script error stops the deploy (the live site stays as it is)
+      - name: The page opens without script errors
+        if: github.event_name == 'push' && steps.diff.outputs.changed == 'true'
+        run: |
+          pip install -q playwright && python -m playwright install --with-deps chromium >/dev/null
+          python3 tests/page_smoke.py
       - if: steps.diff.outputs.changed == 'true'
         uses: actions/configure-pages@v5
       - if: steps.diff.outputs.changed == 'true'
