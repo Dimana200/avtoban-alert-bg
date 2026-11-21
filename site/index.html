@@ -608,6 +608,36 @@ window.showPlace = function (lat, lon, name) {
   map.setView([lat, lon], 16);
 };
 window.hidePlace = function () { if (placeMark) { map.removeLayer(placeMark); placeMark = null; } };
+// the app's search shows several places at once: numbered points; tapping one tells the app
+var placeMarks = [], placeSel = -1;
+function placeIcon(i, on) {
+  return L.divIcon({ className: "", iconSize: on ? [38, 38] : [28, 28], iconAnchor: on ? [19, 19] : [14, 14],
+    html: '<div style="width:100%;height:100%;border-radius:50%;background:' + (on ? "#F08C00" : "#1A2030") + ';color:#fff;border:3px solid ' +
+      (on ? "#fff" : "#F08C00") + ';display:flex;align-items:center;justify-content:center;font:700 ' + (on ? 16 : 13) +
+      'px sans-serif;box-sizing:border-box;box-shadow:0 2px 6px rgba(0,0,0,.4)">' + (i + 1) + "</div>" });
+}
+window.clearPlaces = function () { placeMarks.forEach(function (m) { map.removeLayer(m); }); placeMarks = []; placeSel = -1; };
+window.showPlaces = function (list, me) {
+  window.clearPlaces();
+  if (!list || !list.length) return;
+  var pts = [];
+  list.forEach(function (p, i) {
+    var m = L.marker([p[0], p[1]], { icon: placeIcon(i, false), title: p[2], zIndexOffset: 1000 - i }).addTo(map);
+    m.on("click", function () { try { if (window.AvtobanApp) AvtobanApp.placeTap(i); } catch (e) { /* older app */ } window.selectPlace(i); });
+    placeMarks.push(m); pts.push([p[0], p[1]]);
+  });
+  if (me) pts.push(me);
+  follow = false; showCenter(true);
+  map.fitBounds(L.latLngBounds(pts), { paddingTopLeft: [30, (APP_INSET.cover || 0) + 30], paddingBottomRight: [30, (APP_INSET.bottom || 0) + 30], maxZoom: 16 });
+};
+window.selectPlace = function (i) {
+  if (placeSel >= 0 && placeMarks[placeSel]) { placeMarks[placeSel].setIcon(placeIcon(placeSel, false)); placeMarks[placeSel].setZIndexOffset(1000 - placeSel); }
+  placeSel = i;
+  var m = placeMarks[i]; if (!m) return;
+  m.setIcon(placeIcon(i, true)); m.setZIndexOffset(5000);
+  var b = map.getBounds().pad(-0.1);
+  if (!b.contains(m.getLatLng())) map.panTo(m.getLatLng());
+};
 // the app tells the page how much of the map its own buttons cover (top and bottom, in CSS pixels)
 // top = where the map's own buttons start; cover = how far down the app's strip covers the map (the car sits below it)
 window.insets = function (top, bottom, cover) {
