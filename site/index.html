@@ -2,6 +2,10 @@
 <html lang="bg">
 <head>
 <meta charset="utf-8">
+<script>
+/* the app's own choice of theme (Авто / Светла / Тъмна): ?theme=light|dark */
+(function () { var t = new URLSearchParams(location.search).get("theme"); if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); })();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Avtoban Alert BG</title>
 <meta name="description" content="Мъгла, вятър, сняг и поледица по магистралите и пътищата I, II и III клас в България, обновявано всеки час">
