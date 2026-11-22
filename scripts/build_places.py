@@ -4,6 +4,7 @@ Hospital photos: free photos from Wikimedia Commons (through the hospital's Wiki
 import json, os, re, time, urllib.parse, urllib.request
 from build_roads import fetch
 import common
+import verify_places
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "..", "site", "places.json")
@@ -95,6 +96,37 @@ def photos(out):
     print(f"hospitals with a Wikidata item: {len(hosp)}, with a photo: {n}", flush=True)
 
 
+TOWNS_Q = """area["ISO3166-1"="BG"][admin_level=2]->.a;
+node[place~"^(city|town|village)$"](area.a);
+out;"""
+REG = os.path.join(HERE, "..", "data", "registries.json")
+
+
+def check(out):
+    """Hospitals and pharmacies against the official registers (see verify_places.py)."""
+    if not os.path.exists(REG):
+        print("no data/registries.json: places not checked", flush=True)
+        return
+    reg = json.load(open(REG, encoding="utf-8"))
+    pl = []
+    for e in fetch(TOWNS_Q):
+        t = e.get("tags", {})
+        n = t.get("name:bg") or t.get("name")
+        if n and "lat" in e:
+            pl.append((n, t.get("place"), e["lat"], e["lon"]))
+    towns = verify_places.Towns(pl)
+    print("settlements:", len(pl), flush=True)
+    st = verify_places.verify(out, reg, towns)
+    print("checked against the registers:", st, flush=True)
+    if os.environ.get("VERBOSE"):
+        n = 0
+        for p in out:
+            if p[1] == "hospital" and not (len(p) > 5 and p[5].get("v")):
+                print("  not in register:", p[2], "|", towns.near(p[3], p[4]), "|", (p[5] if len(p) > 5 else {}).get("a"))
+                n += 1
+                if n > 60: break
+
+
 def main():
     els = fetch(Q)
     out, seen = [], set()
@@ -129,6 +161,7 @@ def main():
         if sub: extra["s"] = sub
         out.append([pid, cat, name, round(lat, 5), round(lon, 5)] + ([extra] if extra else []))
     photos(out)
+    check(out)
     out.sort(key=lambda p: p[0])
     if len(out) < 1000:
         raise SystemExit(f"only {len(out)} places: keeping the old file")
