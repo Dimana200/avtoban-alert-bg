@@ -17,12 +17,21 @@ Q = """area["ISO3166-1"="BG"][admin_level=2]->.a;
  nwr[highway~"^(rest_area|services)$"](area.a);
  nwr[amenity=hospital](area.a);
  nwr[healthcare=hospital](area.a);
- nwr[amenity=pharmacy](area.a););
+ nwr[amenity=pharmacy](area.a);
+ nwr["service:vehicle:towing"="yes"](area.a);
+ nwr[towing="yes"](area.a);
+ nwr[name~"пътна помощ|Пътна помощ|Пътна Помощ|ПЪТНА ПОМОЩ|репатрак|Репатрак|РЕПАТРАК|road assistance|Road Assistance|towing|Towing"](area.a););
 out center tags;"""
 
 # category, and the name to show when the place has none
+TOW_WORDS = ("пътна помощ", "репатрак", "road assistance", "towing")
+
+
 def kind(t):
     a, s, h = t.get("amenity"), t.get("shop"), t.get("highway")
+    name = (t.get("name") or "").lower()
+    if t.get("service:vehicle:towing") == "yes" or t.get("towing") == "yes" or any(w in name for w in TOW_WORDS):
+        return "tow", "Пътна помощ"
     if a == "fuel": return "fuel", "Бензиностанция"
     if a in ("restaurant", "fast_food", "cafe"): return "food", {"restaurant": "Ресторант", "fast_food": "Закусвалня", "cafe": "Кафе"}[a]
     if a == "toilets": return "wc", "Тоалетна"
@@ -106,7 +115,7 @@ def main():
         extra = {}
         if t.get("brand") and t.get("brand") != name: extra["b"] = t["brand"][:40]
         if t.get("opening_hours"): extra["oh"] = t["opening_hours"][:60]
-        if cat in ("hospital", "pharmacy"):
+        if cat in ("hospital", "pharmacy", "tow"):
             ph = t.get("phone") or t.get("contact:phone")
             if ph: extra["ph"] = ph.split(";")[0].strip()[:30]
             web = t.get("website") or t.get("contact:website")
