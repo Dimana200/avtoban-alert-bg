@@ -101,6 +101,44 @@ def photos(out):
     print(f"hospitals with a Wikidata item: {len(hosp)}, with a photo: {n}", flush=True)
 
 
+OCM = os.path.join(HERE, "..", "data", "ocm.json")
+
+
+def add_ocm(out):
+    """Charging stations from Open Charge Map that OpenStreetMap does not have (within 100 m of one = the same station;
+    then it only adds the sockets and operator the OpenStreetMap one lacks)."""
+    if not os.path.exists(OCM):
+        return
+    stations = json.load(open(OCM, encoding="utf-8")).get("p", [])
+    chg = [p for p in out if p[1] == "charge"]
+    grid = {}
+    for p in chg:
+        grid.setdefault((int(p[3] * 100), int(p[4] * 100)), []).append(p)
+    added = merged = 0
+    for s in stations:
+        near = None
+        gi, gj = int(s["lat"] * 100), int(s["lon"] * 100)
+        for i in range(gi - 1, gi + 2):
+            for j in range(gj - 1, gj + 2):
+                for p in grid.get((i, j), ()):
+                    if verify_places.km(s["lat"], s["lon"], p[3], p[4]) < 0.1:
+                        near = p
+        ex = {k: v for k, v in (("sk", s["sk"]), ("op", s["op"]), ("ph", s["ph"]), ("a", s["addr"]), ("free", s["free"])) if v}
+        if near:
+            e = near[5] if len(near) > 5 else {}
+            for k, v in ex.items():
+                e.setdefault(k, v)
+            e["oc"] = 1
+            if len(near) == 5:
+                near.append(e)
+            merged += 1
+        else:
+            ex["oc"] = 1
+            out.append(["o" + str(s["id"]), "charge", s["t"], s["lat"], s["lon"], ex])
+            added += 1
+    print("Open Charge Map: added", added, "merged into OpenStreetMap ones", merged, flush=True)
+
+
 TOWNS_Q = """area["ISO3166-1"="BG"][admin_level=2]->.a;
 node[place~"^(city|town|village)$"](area.a);
 out;"""
@@ -183,6 +221,7 @@ def main():
         out.append([pid, cat, name, round(lat, 5), round(lon, 5)] + ([extra] if extra else []))
     photos(out)
     check(out)
+    add_ocm(out)
     out.sort(key=lambda p: p[0])
     if len(out) < 1000:
         raise SystemExit(f"only {len(out)} places: keeping the old file")
