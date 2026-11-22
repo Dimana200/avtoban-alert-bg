@@ -33,7 +33,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0F1216; --surface: #191D24; --fg: #ECEEF2; --muted: #A3AAB7; --line: #2C323C;
-    --ok: #4CC38A; --lv1-ink: #FFE27A;
+    --ok: #3A9F74; --lv1-ink: #FFE27A;
     --tile-filter: invert(1) hue-rotate(180deg) brightness(.82) contrast(.9);
     --shadow: 0 8px 28px rgba(0, 0, 0, .5);
     color-scheme: dark;
@@ -41,7 +41,7 @@
 }
 :root[data-theme="dark"] {
   --bg: #0F1216; --surface: #191D24; --fg: #ECEEF2; --muted: #A3AAB7; --line: #2C323C;
-  --ok: #4CC38A; --lv1-ink: #FFE27A;
+  --ok: #3A9F74; --lv1-ink: #FFE27A;
   --tile-filter: invert(1) hue-rotate(180deg) brightness(.82) contrast(.9);
   --shadow: 0 8px 28px rgba(0, 0, 0, .5);
   color-scheme: dark;
@@ -68,6 +68,12 @@ header {
 main { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 380px; }
 #map { min-height: 0; background: var(--bg); }
 .leaflet-tile-pane { filter: var(--tile-filter); }
+/* our own vector map has a real dark style: no inverted colours on it */
+html.vector .leaflet-tile-pane { filter: none; }
+/* a soft breathing glow under the roads with a hazard */
+.haz-glow { animation: hazglow 2.4s ease-in-out infinite; }
+@keyframes hazglow { 0%, 100% { stroke-opacity: .12; } 50% { stroke-opacity: .5; } }
+@media (prefers-reduced-motion: reduce) { .haz-glow { animation: none; stroke-opacity: .3; } }
 .leaflet-container { font-family: var(--f-body); background: var(--bg); }
 .leaflet-control-attribution { background: var(--surface) !important; color: var(--muted) !important; font-size: 10px; }
 .leaflet-control-attribution a { color: var(--fg) !important; }
@@ -209,6 +215,7 @@ var TYPES = {
 };
 var LV = ["Нормално", "Внимание", "Опасно", "Много опасно"];
 var WIDTH = [5, 4, 3, 2];
+var glowR;
 var map, canvas, roads = null, haz = null, pts = {}, layer = null, shown = [], userPos = null, userMark = null;
 var showCls = [true, true, true, true];
 // what the viewer chose to see on the map (kept in this browser / this phone)
@@ -249,7 +256,12 @@ function drawRoads() {
     if (!lv && !SHOW.ok) return;            // "only roads with a hazard"
     var pl = L.polyline(s.c, { renderer: canvas, color: color(lv), weight: WIDTH[s.k] + (lv ? 2 : 0), opacity: s.k === 3 && !lv ? 0.75 : 1, lineCap: "round", lineJoin: "round" });
     pl.on("click", function (e) { popup(s.r, s.p, e.latlng); });
-    if (lv) hot.push(pl); else layer.addLayer(pl);
+    if (lv) {
+      hot.push(pl);
+      if (!glowR) glowR = L.svg({ padding: 0.3 });
+      layer.addLayer(L.polyline(s.c, { renderer: glowR, interactive: false, className: "haz-glow", color: color(lv),
+        weight: WIDTH[s.k] + 12, lineCap: "round", lineJoin: "round" }));
+    } else layer.addLayer(pl);
   });
   hot.forEach(function (pl) { layer.addLayer(pl); });   // hazards drawn on top of normal roads
   layer.addTo(map);
@@ -672,16 +684,23 @@ function appMode() {
 // If it cannot be loaded, the OpenStreetMap tiles as before.
 var MAP_FILE = "https://pub-c6b1176858a7454780f1fd9cd784b107.r2.dev/bg.pmtiles";
 // the base map style ("light"; ?flavor=… only for tests)
-var MAP_FLAVOR = (new URLSearchParams(location.search)).get("flavor") || "light";
+function darkScheme() {
+  var t = document.documentElement.getAttribute("data-theme");
+  if (t) return t === "dark";
+  return !!(window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches);
+}
+var MAP_FLAVOR = (new URLSearchParams(location.search)).get("flavor") || (darkScheme() ? "dark" : "light");
 var REGION_FILE = "https://pub-c6b1176858a7454780f1fd9cd784b107.r2.dev/region.pmtiles";   // neighbours, coarse, for zoomed-out views
 var OSM_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 function osmTiles() {
+  document.documentElement.classList.remove("vector");
   return L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: OSM_ATTR }).addTo(map);
 }
 function baseMap() {
   if (!window.protomapsL) { osmTiles(); return; }
   var layer, region;
   try {
+    document.documentElement.classList.add("vector");
     var attr = OSM_ATTR + ' · <a href="https://protomaps.com">Protomaps</a>';     // the same text on both: shown once
     region = protomapsL.leafletLayer({ url: REGION_FILE, flavor: MAP_FLAVOR, lang: "bg", maxDataZoom: 8, maxZoom: 8, zIndex: 1, attribution: attr }).addTo(map);
     // only one of the two maps is drawn at a time: the overview up to zoom 8, Bulgaria from 9 (half the work for the phone)
@@ -690,7 +709,7 @@ function baseMap() {
     // the ready-made style leaves out the names of city quarters (кв. Аспарухово, ж.к. Дружба…): add them
     if (protomapsL.CenteredTextSymbolizer && layer.labelRules) layer.labelRules.push({
       dataLayer: "places", minzoom: 12,
-      symbolizer: new protomapsL.CenteredTextSymbolizer({ labelProps: ["name:bg", "name"], fill: "#4a4f5c", stroke: "#ffffff", width: 2,
+      symbolizer: new protomapsL.CenteredTextSymbolizer({ labelProps: ["name:bg", "name"], fill: MAP_FLAVOR === "dark" ? "#c9ced8" : "#4a4f5c", stroke: MAP_FLAVOR === "dark" ? "#1c1f26" : "#ffffff", width: 2,
         font: "600 12px sans-serif" }),
       filter: function (z, f) { return f.props.kind === "neighbourhood" || f.props.kind === "macrohood"; }
     });
