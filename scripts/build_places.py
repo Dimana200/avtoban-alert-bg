@@ -14,6 +14,9 @@ Q = """area["ISO3166-1"="BG"][admin_level=2]->.a;
  nwr[amenity~"^(restaurant|fast_food|cafe)$"][name](area.a);
  nwr[amenity=toilets](area.a);
  nwr[shop~"^(car_repair|tyres)$"](area.a);
+ nwr[craft=car_repair](area.a);
+ nwr[amenity=charging_station](area.a);
+ nwr[emergency=roadside_assistance](area.a);
  nwr[amenity=parking][name](area.a);
  nwr[highway~"^(rest_area|services)$"](area.a);
  nwr[amenity=hospital](area.a);
@@ -31,13 +34,15 @@ TOW_WORDS = ("пътна помощ", "репатрак", "road assistance", "to
 def kind(t):
     a, s, h = t.get("amenity"), t.get("shop"), t.get("highway")
     name = (t.get("name") or "").lower()
-    if t.get("service:vehicle:towing") == "yes" or t.get("towing") == "yes" or any(w in name for w in TOW_WORDS):
+    if t.get("service:vehicle:towing") == "yes" or t.get("towing") == "yes" or t.get("emergency") == "roadside_assistance" \
+            or any(w in name for w in TOW_WORDS):
         return "tow", "Пътна помощ"
     if a == "fuel": return "fuel", "Бензиностанция"
     if a in ("restaurant", "fast_food", "cafe"): return "food", {"restaurant": "Ресторант", "fast_food": "Закусвалня", "cafe": "Кафе"}[a]
     if a == "toilets": return "wc", "Тоалетна"
     if s == "tyres": return "service", "Гуми"
-    if s == "car_repair": return "service", "Автосервиз"
+    if s == "car_repair" or t.get("craft") == "car_repair": return "service", "Автосервиз"
+    if a == "charging_station": return "charge", "Зарядна станция"
     if a == "parking": return "parking", "Паркинг"
     if h in ("rest_area", "services"): return "rest", "Място за почивка"
     if a == "hospital" or t.get("healthcare") == "hospital": return "hospital", "Болница"
@@ -159,7 +164,21 @@ def main():
             if addr or city: extra["a"] = ", ".join(x for x in [addr, city] if x)[:100]
             if t.get("emergency") == "yes": extra["em"] = 1
             if cat == "hospital" and t.get("wikidata", "").startswith("Q"): extra["wd"] = t["wikidata"]
-        sub = t.get("amenity") if cat == "food" else t.get("shop") if cat == "service" else None
+        if cat == "charge":
+            # sockets and power: "Type 2 ×2 · 22 kW, CCS ×1 · 50 kW"
+            names = {"type2": "Type 2", "type2_combo": "CCS", "chademo": "CHAdeMO", "type1": "Type 1", "type1_combo": "CCS1",
+                     "tesla_supercharger": "Tesla", "tesla_supercharger_ccs": "Tesla CCS", "schuko": "Шуко"}
+            parts = []
+            for k, label in names.items():
+                n = t.get("socket:" + k)
+                if not n or n == "no":
+                    continue
+                kw = re.sub(r"\s*kw$", "", (t.get("socket:" + k + ":output") or "").lower()).strip()
+                parts.append(label + (" ×" + n if n.isdigit() else "") + (" · " + kw + " kW" if kw and re.match(r"^\d+(\.\d+)?$", kw) else ""))
+            if parts: extra["sk"] = ", ".join(parts)[:120]
+            if t.get("operator") or t.get("network"): extra["op"] = (t.get("operator") or t.get("network"))[:40]
+            if t.get("fee") == "no": extra["free"] = 1
+        sub = t.get("amenity") if cat == "food" else t.get("shop") or ("car_repair" if t.get("craft") == "car_repair" else None) if cat == "service" else None
         if sub: extra["s"] = sub
         out.append([pid, cat, name, round(lat, 5), round(lon, 5)] + ([extra] if extra else []))
     photos(out)
