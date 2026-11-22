@@ -644,6 +644,8 @@ window.insets = function (top, bottom, cover) {
   var r = document.documentElement.style;
   r.setProperty("--app-top", top + "px"); r.setProperty("--app-bottom", bottom + "px");
   APP_INSET = { top: top, bottom: bottom, cover: cover == null ? top : cover };
+  // a road's info box must not open under the app's buttons: the map moves it into the free part
+  L.Popup.mergeOptions({ autoPanPaddingTopLeft: L.point(12, APP_INSET.cover + 12), autoPanPaddingBottomRight: L.point(12, bottom + 12) });
   if (DRIVE.on && follow && DRIVE.last) window.drive.apply(null, DRIVE.last);
 };
 var APP_INSET = { top: 0, bottom: 0, cover: 0 };
@@ -697,7 +699,8 @@ function baseMap() {
   }).catch(function () { map.removeLayer(layer); if (region) map.removeLayer(region); osmTiles(); });
 }
 function start() {
-  canvas = L.canvas({ padding: 0.3, tolerance: 6 });
+  // a finger is wider than a mouse: on touch screens a tap up to 14 px beside a road still opens its info
+  canvas = L.canvas({ padding: 0.3, tolerance: (window.matchMedia && matchMedia("(pointer: coarse)").matches) ? 14 : 6 });
   // the map stays over Bulgaria: a swipe meant for the page cannot push it out into the sea
   var BG = L.latLngBounds([40.9, 21.9], [44.6, 29.0]);
   var turn = /[?&]app=1/.test(location.search) && !!L.Map.prototype.setBearing;     // the turning map only in the app
