@@ -669,6 +669,11 @@ function appMode() {
   document.documentElement.classList.add("app");
   setTimeout(function () { map.invalidateSize(); }, 50);
   map.on("dragstart", function () { follow = false; showCenter(true); });
+  // zooming by hand (two fingers, double tap, mouse wheel) also means "I look around": stay until "Центрирай"
+  var el = map.getContainer(), lookAround = function () { follow = false; showCenter(true); };
+  el.addEventListener("touchstart", function (e) { if (e.touches.length > 1) lookAround(); }, { passive: true });
+  el.addEventListener("wheel", lookAround, { passive: true });
+  map.on("dblclick", lookAround);
   map.on("zoomend", function () {                           // a zoom we did not make = the driver zoomed
     if (DRIVE.auto) { DRIVE.auto = false; return; }
     if (DRIVE.on && follow && DRIVE.z != null && map.getZoom() !== DRIVE.z) { follow = false; showCenter(true); }
