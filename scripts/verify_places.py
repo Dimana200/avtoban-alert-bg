@@ -61,20 +61,38 @@ class Towns:
         return best
 
 
-STREET = re.compile(r"^(ул|улица|бул|булевард|пл|площад|ж\.?\s*к|кв|квартал)\b\.?\s*", re.I)
+STREET = re.compile(r"^(ул|улица|бул|булевард|пл|площад)\b\.?\s*", re.I)
+SKIP_PART = re.compile(r"^\s*(район|р-н|ж\.?\s*к|кв|квартал|общ|обл|област|община)\b", re.I)
+ORD = {"1-ви": "първи", "2-ри": "втори", "3-ти": "трети", "4-ти": "четвърти", "5-ти": "пети", "6-ти": "шести",
+       "7-ми": "седми", "8-ми": "осми", "9-ти": "девети", "10-ти": "десети"}
+TITLES = {"ген", "генерал", "цар", "княз", "д", "р", "др", "проф", "акад", "хан", "св", "свети", "ул", "бул", "пл",
+          "бл", "вх", "ет", "ап", "No", "n"}
 
 
 def addr_key(town, addr):
-    """("гр. Берковица", "ул. Николаевска № 8") -> ("берковица", "николаевска", "8")"""
+    """("гр. Берковица", "ул. Николаевска № 8") -> ("берковица", "николаевска", "8"); one street part only"""
     t = norm(re.sub(r"^(гр|с)\.\s*", "", town or "", flags=re.I))
     t = re.sub(r"\s+\d{4}$", "", t)
-    a = (addr or "").split(",")[0]
-    a = STREET.sub("", a.strip())
+    a = STREET.sub("", (addr or "").strip())
+    for k, v in ORD.items():
+        a = re.sub(r"(?<![\w-])" + re.escape(k) + r"(?![\w-])", v, a, flags=re.I)
     m = re.search(r"(?:№|N|No)?\s*(\d+[а-яa-z]?)\b", a)
     num = m.group(1).lower() if m else ""
     street = norm(re.sub(r"(№|N\b|No\b)?\s*\d+.*$", "", a))
-    street = " ".join(w for w in street.split() if w not in ("ул", "бул", "пл", "бл", "вх", "ет", "ап"))
+    street = " ".join(w for w in street.split() if w not in TITLES)
     return (t, street[:14], num)
+
+
+def addr_keys(town, addr):
+    """Every street part of a register address: "район Надежда, бул. Ломско шосе № 148" -> the key of the second part."""
+    out = set()
+    for part in (addr or "").split(","):
+        if SKIP_PART.match(part) or not re.search(r"\d", part):
+            continue
+        k = addr_key(town, part)
+        if k[1] and k[2]:
+            out.add(k)
+    return out
 
 
 def verify(places, reg, towns):
@@ -91,9 +109,9 @@ def verify(places, reg, towns):
     act, closed = set(), set()
     ph = reg.get("pharmacies") or {}
     for t, a in ph.get("active", []):
-        act.add(addr_key(t, a))
+        act |= addr_keys(t, a)
     for t, a in ph.get("closed", []):
-        closed.add(addr_key(t, a))
+        closed |= addr_keys(t, a)
 
     for p in places:
         cat = p[1]
@@ -138,7 +156,7 @@ def verify(places, reg, towns):
             stats["ph_addr"] += 1
             street = addr.split(",")[0]
             k = addr_key(town, street)
-            if not k[2]:
+            if not k[0] or not k[1] or not k[2]:
                 continue
             if k in act:
                 ex["v"] = 1; stats["ph_v"] += 1
