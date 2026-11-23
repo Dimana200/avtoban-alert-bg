@@ -74,10 +74,6 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 380px; 
 .leaflet-tile-pane { filter: var(--tile-filter); }
 /* our own vector map has a real dark style: no inverted colours on it */
 html.vector .leaflet-tile-pane { filter: none; }
-/* a soft breathing glow under the roads with a hazard */
-.haz-glow { animation: hazglow 2.4s ease-in-out infinite; }
-@keyframes hazglow { 0%, 100% { stroke-opacity: .12; } 50% { stroke-opacity: .5; } }
-@media (prefers-reduced-motion: reduce) { .haz-glow { animation: none; stroke-opacity: .3; } }
 .leaflet-container { font-family: var(--f-body); background: var(--bg); }
 .leaflet-control-attribution { background: var(--surface) !important; color: var(--muted) !important; font-size: 10px; }
 .leaflet-control-attribution a { color: var(--fg) !important; }
@@ -219,7 +215,6 @@ var TYPES = {
 };
 var LV = ["Нормално", "Внимание", "Опасно", "Много опасно"];
 var WIDTH = [5, 4, 3, 2];
-var glowR;
 var map, canvas, roads = null, haz = null, pts = {}, layer = null, shown = [], userPos = null, userMark = null;
 var showCls = [true, true, true, true];
 // what the viewer chose to see on the map (kept in this browser / this phone)
@@ -260,12 +255,7 @@ function drawRoads() {
     if (!lv && !SHOW.ok) return;            // "only roads with a hazard"
     var pl = L.polyline(s.c, { renderer: canvas, color: color(lv), weight: WIDTH[s.k] + (lv ? 2 : 0), opacity: s.k === 3 && !lv ? 0.75 : 1, lineCap: "round", lineJoin: "round" });
     pl.on("click", function (e) { popup(s.r, s.p, e.latlng); });
-    if (lv) {
-      hot.push(pl);
-      if (!glowR) glowR = L.svg({ padding: 0.3 });
-      layer.addLayer(L.polyline(s.c, { renderer: glowR, interactive: false, className: "haz-glow", color: color(lv),
-        weight: WIDTH[s.k] + 12, lineCap: "round", lineJoin: "round" }));
-    } else layer.addLayer(pl);
+    if (lv) hot.push(pl); else layer.addLayer(pl);
   });
   hot.forEach(function (pl) { layer.addLayer(pl); });   // hazards drawn on top of normal roads
   layer.addTo(map);
