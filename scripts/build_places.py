@@ -19,6 +19,7 @@ Q = """area["ISO3166-1"="BG"][admin_level=2]->.a;
  nwr[emergency=roadside_assistance](area.a);
  nwr[amenity=parking][name](area.a);
  nwr[highway~"^(rest_area|services)$"](area.a);
+ nwr[tourism~"^(hotel|motel|guest_house|hostel)$"][name](area.a);
  nwr[amenity=hospital](area.a);
  nwr[healthcare=hospital](area.a);
  nwr[amenity=pharmacy](area.a);
@@ -29,6 +30,9 @@ out center tags;"""
 
 # category, and the name to show when the place has none
 TOW_WORDS = ("пътна помощ", "репатрак", "road assistance", "towing")
+
+
+HOTELS = {"hotel": "Хотел", "motel": "Мотел", "guest_house": "Къща за гости", "hostel": "Хостел"}
 
 
 def kind(t):
@@ -44,7 +48,8 @@ def kind(t):
     if s == "car_repair" or t.get("craft") == "car_repair": return "service", "Автосервиз"
     if a == "charging_station": return "charge", "Зарядна станция"
     if a == "parking": return "parking", "Паркинг"
-    if h in ("rest_area", "services"): return "rest", "Място за почивка"
+    if h in ("rest_area", "services"): return "parking", "Място за почивка"     # roadside rest stops are parking now
+    if t.get("tourism") in HOTELS: return "hotel", HOTELS[t["tourism"]]
     if a == "hospital" or t.get("healthcare") == "hospital": return "hospital", "Болница"
     if a == "pharmacy": return "pharmacy", "Аптека"
     return None, None
@@ -164,7 +169,7 @@ def check(out):
     # the settlement of every place that people search by town ("болница Козлодуй"): extra "tn"
     n = 0
     for p in out:
-        if p[1] in ("hospital", "pharmacy", "tow", "service", "fuel", "charge", "rest"):
+        if p[1] in ("hospital", "pharmacy", "tow", "service", "fuel", "charge", "hotel"):
             t = towns.near(p[3], p[4])
             if t:
                 if len(p) == 5:
@@ -203,7 +208,7 @@ def main():
         extra = {}
         if t.get("brand") and t.get("brand") != name: extra["b"] = t["brand"][:40]
         if t.get("opening_hours"): extra["oh"] = t["opening_hours"][:60]
-        if cat in ("hospital", "pharmacy", "tow"):
+        if cat in ("hospital", "pharmacy", "tow", "hotel"):
             ph = t.get("phone") or t.get("contact:phone")
             if ph: extra["ph"] = ph.split(";")[0].strip()[:30]
             web = t.get("website") or t.get("contact:website")
@@ -228,6 +233,7 @@ def main():
             if t.get("operator") or t.get("network"): extra["op"] = (t.get("operator") or t.get("network"))[:40]
             if t.get("fee") == "no": extra["free"] = 1
         sub = t.get("amenity") if cat == "food" else t.get("shop") or ("car_repair" if t.get("craft") == "car_repair" else None) if cat == "service" else None
+        if cat == "hotel": sub = t.get("tourism")
         if sub: extra["s"] = sub
         out.append([pid, cat, name, round(lat, 5), round(lon, 5)] + ([extra] if extra else []))
     photos(out)
