@@ -135,6 +135,9 @@ html.app .leaflet-top { z-index: 1001; }
 .ctr-btn { font: 700 16px/1 var(--f-display); letter-spacing: .02em; padding: 12px 16px; border-radius: 24px; border: 0; cursor: pointer;
   background: #1E66F5; color: #fff; box-shadow: 0 3px 10px rgba(0,0,0,.45); margin-bottom: 26px !important; }
 .ctr-btn[hidden] { display: none; }
+.ctr-btn.pic { background: none; box-shadow: none; padding: 0; border-radius: 0; line-height: 0; transition: transform .2s cubic-bezier(.3,1.6,.5,1); }
+.ctr-btn.pic img { width: 156px; height: auto; display: block; }
+.ctr-btn.pic:active { transform: scale(.94); }
 .lyr-box b { font: 700 13px/1 var(--f-display); letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
 .lyr-box label { display: flex; align-items: center; gap: 10px; cursor: pointer; min-height: 28px; }
 .lyr-box input { width: 20px; height: 20px; flex-shrink: 0; accent-color: var(--ok); }
@@ -553,7 +556,7 @@ function showCenter(v) { if (centerBtn) centerBtn.hidden = !v; }
 function centerControl() {
   var C = L.Control.extend({ options: { position: "bottomleft" }, onAdd: function () {
     var b = L.DomUtil.create("button", "ctr-btn");
-    b.type = "button"; b.hidden = true; b.innerHTML = "◎ Центрирай"; b.setAttribute("aria-label", "Върни картата на колата");
+    b.type = "button"; b.hidden = true; b.className += " pic"; b.innerHTML = '<img src="centrirai.webp" alt="Центрирай" draggable="false">'; b.setAttribute("aria-label", "Върни картата на колата");
     L.DomEvent.disableClickPropagation(b);
     b.addEventListener("click", function () {
       follow = true; showCenter(false);
