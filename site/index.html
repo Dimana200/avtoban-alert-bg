@@ -135,6 +135,8 @@ html.app .leaflet-top { z-index: 1001; }
 .ctr-btn { font: 700 16px/1 var(--f-display); letter-spacing: .02em; padding: 12px 16px; border-radius: 24px; border: 0; cursor: pointer;
   background: #1E66F5; color: #fff; box-shadow: 0 3px 10px rgba(0,0,0,.45); margin-bottom: 26px !important; }
 .ctr-btn[hidden] { display: none; }
+.me-arrow { background: none; border: 0; }
+.me-arrow img { width: 46px; height: auto; display: block; transform-origin: 50% 60%; transition: transform .5s ease-out; filter: drop-shadow(0 2px 5px rgba(0,0,0,.45)); }
 .ctr-btn.pic { background: none; box-shadow: none; padding: 0; border-radius: 0; line-height: 0; transition: transform .2s cubic-bezier(.3,1.6,.5,1); }
 .ctr-btn.pic img { width: 156px; height: auto; display: block; }
 .ctr-btn.pic:active { transform: scale(.94); }
@@ -506,6 +508,20 @@ function loadAir() {
 }
 
 var meMark = null, follow = true;
+// "me" on the map: an arrow that turns where the person or the driver is heading
+var ME = { h: 0 }, meImg = null;
+function makeMe(p) {
+  var m = L.marker(p, { interactive: false, keyboard: false, zIndexOffset: 1000,
+    icon: L.divIcon({ className: "me-arrow", html: '<img src="arrow.webp" alt="" draggable="false">', iconSize: [46, 46], iconAnchor: [23, 26] }) }).addTo(map);
+  meImg = m.getElement() && m.getElement().querySelector("img");
+  updateMe();
+  return m;
+}
+function updateMe() {
+  if (!meImg) return;
+  var rel = ME.h - (DRIVE.on && canRotate() ? DRIVE.b : 0);   // on the turning map the heading is straight up
+  meImg.style.transform = "rotate(" + Math.round(rel) + "deg)";
+}
 // the position dots use the roads' canvas: a second canvas layer on top would swallow taps on the roads (no popup)
 function layerControl() {
   var NAMES = [["ok", "Пътища без опасност (зелени)"], ["speed", "Камери за скорост"], ["red", "Камери на светофар"],
@@ -576,14 +592,15 @@ function driveZoom(speed, limit) {
 }
 window.drive = function (lat, lon, speed, heading, limit) {
   if (lat == null) {                                        // drive mode switched off: back to the overview
-    if (DRIVE.on) { DRIVE.on = false; DRIVE.z = null; follow = true; showCenter(false); DRIVE.b = 0; if (canRotate()) map.setBearing(0); if (meMark) map.setView(meMark.getLatLng(), 10); }
+    if (DRIVE.on) { DRIVE.on = false; DRIVE.z = null; follow = true; showCenter(false); DRIVE.b = 0; if (canRotate()) map.setBearing(0); updateMe(); if (meMark) map.setView(meMark.getLatLng(), 10); }
     return;
   }
   var p = L.latLng(lat, lon);
-  if (!meMark) meMark = L.circleMarker(p, { renderer: canvas, interactive: false, radius: 9, color: "#fff", weight: 3, fillColor: "#1E66F5", fillOpacity: 1 }).addTo(map);
+  if (!meMark) meMark = makeMe(p);
   else meMark.setLatLng(p);
   var now = Date.now();
   DRIVE.last = [lat, lon, speed, heading, limit];
+  if (heading != null && speed > 3) ME.h = heading;
   if (!DRIVE.on) { DRIVE.on = true; follow = true; showCenter(false); }
   if (!follow) return;                                      // the driver looks around: stay until "Центрирай"
   var want = driveZoom(speed, limit);
@@ -603,6 +620,7 @@ window.drive = function (lat, lon, speed, heading, limit) {
     var ahead = k ? Math.max(0, 0.25 * k + 0.25 * APP_INSET.cover - 0.75 * APP_INSET.bottom) : null;
     c = c.add([Math.sin(r) * (ahead != null ? ahead : sz.x * 0.25), -Math.cos(r) * (ahead != null ? ahead : sz.y * 0.25)]);
   }
+  updateMe();
   var target = map.unproject(c, z);
   if (map.getZoom() !== z) { DRIVE.auto = true; map.setView(target, z, { animate: true }); }
   else map.panTo(target, { animate: true, duration: 0.9, easeLinearity: 1 });
@@ -675,8 +693,9 @@ function appMode() {
   if (navigator.geolocation) navigator.geolocation.watchPosition(function (pos) {
     if (DRIVE.on) return;                                   // the app moves the map while driving
     var p = [pos.coords.latitude, pos.coords.longitude];
+    if (pos.coords.heading != null && !isNaN(pos.coords.heading) && (pos.coords.speed || 0) > 0.8) { ME.h = pos.coords.heading; updateMe(); }
     if (!meMark) {
-      meMark = L.circleMarker(p, { renderer: canvas, interactive: false, radius: 9, color: "#fff", weight: 3, fillColor: "#1E66F5", fillOpacity: 1 }).addTo(map);
+      meMark = makeMe(p);
       map.setView(p, 10);
     } else meMark.setLatLng(p);
     if (follow) map.panTo(p, { animate: true });
