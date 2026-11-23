@@ -161,6 +161,17 @@ def check(out):
     print("settlements:", len(pl), flush=True)
     st = verify_places.verify(out, reg, towns)
     print("checked against the registers:", st, flush=True)
+    # the settlement of every place that people search by town ("болница Козлодуй"): extra "tn"
+    n = 0
+    for p in out:
+        if p[1] in ("hospital", "pharmacy", "tow", "service", "fuel", "charge", "rest"):
+            t = towns.near(p[3], p[4])
+            if t:
+                if len(p) == 5:
+                    p.append({})
+                p[5]["tn"] = t
+                n += 1
+    print("places with a town:", n, flush=True)
     for p in [p for p in out if len(p) > 5 and p[5].get("x")][:12]:
         print("  pharmacy with only a closed licence at its address:", p[2], "|", p[5].get("a"), flush=True)
     if os.environ.get("VERBOSE"):
