@@ -136,9 +136,9 @@ html.app .leaflet-top { z-index: 1001; }
   background: #1E66F5; color: #fff; box-shadow: 0 3px 10px rgba(0,0,0,.45); margin-bottom: 26px !important; }
 .ctr-btn[hidden] { display: none; }
 .me-arrow { background: none; border: 0; }
-.me-arrow img { width: 46px; height: auto; display: block; transform-origin: 50% 60%; transition: transform .5s ease-out; filter: drop-shadow(0 2px 5px rgba(0,0,0,.45)); }
+.me-arrow img { width: 30px; height: auto; display: block; transform-origin: 50% 60%; transition: transform .5s ease-out; filter: drop-shadow(0 2px 5px rgba(0,0,0,.45)); }
 .ctr-btn.pic { background: none; box-shadow: none; padding: 0; border-radius: 0; line-height: 0; transition: transform .2s cubic-bezier(.3,1.6,.5,1); }
-.ctr-btn.pic img { width: 156px; height: auto; display: block; }
+.ctr-btn.pic img { width: 120px; height: auto; display: block; }
 .ctr-btn.pic:active { transform: scale(.94); }
 .lyr-box b { font: 700 13px/1 var(--f-display); letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
 .lyr-box label { display: flex; align-items: center; gap: 10px; cursor: pointer; min-height: 28px; }
@@ -512,7 +512,7 @@ var meMark = null, follow = true;
 var ME = { h: 0 }, meImg = null;
 function makeMe(p) {
   var m = L.marker(p, { interactive: false, keyboard: false, zIndexOffset: 1000,
-    icon: L.divIcon({ className: "me-arrow", html: '<img src="arrow.webp" alt="" draggable="false">', iconSize: [46, 46], iconAnchor: [23, 26] }) }).addTo(map);
+    icon: L.divIcon({ className: "me-arrow", html: '<img src="arrow.webp" alt="" draggable="false">', iconSize: [30, 30], iconAnchor: [15, 17] }) }).addTo(map);
   meImg = m.getElement() && m.getElement().querySelector("img");
   updateMe();
   return m;
