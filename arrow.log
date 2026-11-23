@@ -1,0 +1,2 @@
+{"found": true, "rect": {"x": 191, "y": 383, "width": 30, "height": 29.375, "top": 383, "right": 221, "bottom": 412.375, "left": 191}, "css": [".me-arrow { background: none; border: 0px; }", ".me-arrow img { display: block; transform-origin: 50% 60%; transition: transform 0.5s ease-out; filter: drop-shadow(rgba(0, 0, 0, 0.45) 0px 2px 5px); width: 30px !important; max-width: 30px !important; height: auto !important; }"], "html": "vector app"}
+errors: []
