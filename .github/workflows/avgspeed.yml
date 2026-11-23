@@ -31,5 +31,6 @@ jobs:
         continue-on-error: true            # an outside source down: keep the old file, still build the others
       - run: |
           git config user.name "avtoban-bot"; git config user.email "avtoban-bot@users.noreply.github.com"
-          git add site/avgspeed.json site/cameras.json site/munis.json site/ukptp.json site/places.json data/registries.json data/ocm.json
+          git add site/avgspeed.json site/cameras.json site/munis.json site/ukptp.json site/places.json data/registries.json
+          [ -f data/ocm.json ] && git add data/ocm.json || true
           git diff --cached --quiet || (git commit -m "Cameras and average speed sections placed on the map" && git pull --rebase && git push)
