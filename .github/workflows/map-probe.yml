@@ -5,15 +5,12 @@ permissions:
 jobs:
   p:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - run: |
-          pip install -q pandas xlrd >/dev/null
-          mkdir -p out
-          cd scripts && python3 build_registries.py 2>&1 | tee ../out/reg.log
-          VERBOSE=1 python3 build_places.py 2>&1 | tee ../out/places.log
-          cp ../data/registries.json ../out/
+          pip install -q playwright >/dev/null && playwright install --with-deps chromium >/dev/null 2>&1
+          mkdir -p out && python3 tests/arrow_probe.py 2>&1 | tee out/arrow.log; cp arrow.png out/ || true
       - if: always()
         run: |
           cd out && git init -q && git checkout -q -b probe-out && git add -A && git -c user.name=ci -c user.email=ci@local commit -qm out
