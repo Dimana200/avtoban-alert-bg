@@ -214,7 +214,7 @@ var TYPES = {
   storm: { name: "Гръмотевична буря", fmt: function () { return ""; } }
 };
 var LV = ["Нормално", "Внимание", "Опасно", "Много опасно"];
-var WIDTH = [5, 4, 3, 2];
+var WIDTH = [2.5, 2, 1.5, 1];          // half of the first version: thin lines; a tap still lands up to 14 px beside a road
 var map, canvas, roads = null, haz = null, pts = {}, layer = null, shown = [], userPos = null, userMark = null;
 var showCls = [true, true, true, true];
 // what the viewer chose to see on the map (kept in this browser / this phone)
@@ -253,7 +253,7 @@ function drawRoads() {
     if (!showCls[s.k]) return;
     var lv = level(s.p);
     if (!lv && !SHOW.ok) return;            // "only roads with a hazard"
-    var pl = L.polyline(s.c, { renderer: canvas, color: color(lv), weight: WIDTH[s.k] + (lv ? 2 : 0), opacity: s.k === 3 && !lv ? 0.75 : 1, lineCap: "round", lineJoin: "round" });
+    var pl = L.polyline(s.c, { renderer: canvas, color: color(lv), weight: WIDTH[s.k] + (lv ? 1 : 0), opacity: s.k === 3 && !lv ? 0.75 : 1, lineCap: "round", lineJoin: "round" });
     pl.on("click", function (e) { popup(s.r, s.p, e.latlng); });
     if (lv) hot.push(pl); else layer.addLayer(pl);
   });
