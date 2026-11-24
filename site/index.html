@@ -718,7 +718,7 @@ function osmTiles() {
   return L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: OSM_ATTR }).addTo(map);
 }
 function baseMap() {
-  if (!window.protomapsL) { osmTiles(); return; }
+  if (/[?&]test=1/.test(location.search) || !window.protomapsL) { osmTiles(); return; }
   var layer, region;
   try {
     document.documentElement.classList.add("vector");
@@ -745,8 +745,9 @@ function start() {
   canvas = L.canvas({ padding: 0.3, tolerance: (window.matchMedia && matchMedia("(pointer: coarse)").matches) ? 14 : 6 });
   // the map stays over Bulgaria: a swipe meant for the page cannot push it out into the sea
   var BG = L.latLngBounds([40.9, 21.9], [44.6, 29.0]);
+  var TESTMAP = /[?&]test=1/.test(location.search);       // TEMPORARY, only for the test build (try the app outside Bulgaria): remove after the test
   var turn = /[?&]app=1/.test(location.search) && !!L.Map.prototype.setBearing;     // the turning map only in the app
-  map = L.map("map", { zoomControl: true, preferCanvas: true, maxZoom: 18, maxBounds: BG, maxBoundsViscosity: 1.0, minZoom: 6,
+  map = L.map("map", { zoomControl: true, preferCanvas: true, maxZoom: 18, maxBounds: TESTMAP ? null : BG, maxBoundsViscosity: 1.0, minZoom: TESTMAP ? 3 : 6,
     rotate: turn, bearing: 0, touchRotate: false, rotateControl: false, shiftKeyRotate: false }).setView([42.7, 25.3], 7);
   baseMap();
   // the app looks for places around what the map shows (the map exists only from here on)
