@@ -506,9 +506,9 @@ function loadUkptp() {
 // rivers (NIMH, once a day): every station, coloured by our thresholds
 function loadRivers() {
   fetch("rivers.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (js) {
-    var layer = L.layerGroup(), C = ["#1C7ED6", "#FAB005", "#F76707", "#E03131"];
+    var layer = new ClusterLayer(), C = ["#1C7ED6", "#FAB005", "#F76707", "#E03131"];
     (js.stations || []).forEach(function (s) {
-      L.marker([s.lat, s.lon], { icon: dot(C[s.level], "≈", s.level ? 24 : 16, s.river), zIndexOffset: s.level * 100 }).addTo(layer)
+      L.marker([s.lat, s.lon], { icon: dot(C[s.level], "≈", s.level ? 24 : 16, s.river), zIndexOffset: s.level * 100, sev: s.level >= 3 ? 3 : s.level >= 2 ? 2 : 1, pin: s.level >= 3 }).addTo(layer)
         .bindPopup("<b>р. " + esc(s.river) + " – " + esc(s.place) + "</b><br>Отток: " + s.q + " m³/s" +
           (s.qavg ? "<br>Средно за станцията: " + s.qavg + " m³/s" : "") + (s.qmax ? "<br>Най-високо измерено: " + s.qmax + " m³/s" : "") +
           (s.dh != null ? "<br>Промяна на нивото за денонощие: " + s.dh + " cm" : "") +
@@ -521,9 +521,9 @@ function loadRivers() {
 // fires seen by satellites in the last 24 hours
 function loadFires() {
   fetch("fires.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (js) {
-    var layer = L.layerGroup();
+    var layer = new ClusterLayer();
     (js.fires || []).forEach(function (f) {
-      L.marker([f.lat, f.lon], { icon: dot(f.n >= 3 ? "#E03131" : "#F76707", "🔥", f.n >= 3 ? 24 : 18, "Пожар") }).addTo(layer)
+      L.marker([f.lat, f.lon], { icon: dot(f.n >= 3 ? "#E03131" : "#F76707", "🔥", f.n >= 3 ? 24 : 18, "Пожар"), sev: f.n >= 3 ? 2 : 1 }).addTo(layer)
         .bindPopup("<b>Пожар, засечен от сателит</b><br>Засичания: " + f.n + "<br>Последно: " +
           new Date(f.t).toLocaleString("bg-BG", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) +
           "<br><small>Източник: NASA FIRMS. Може да е и горене на стърнища или отпадъци.</small>");
@@ -536,13 +536,13 @@ function loadFires() {
 function loadAir() {
   Promise.all([fetch("air.json", { cache: "no-cache" }).then(function (r) { return r.json(); }), fetch("munis.json").then(function (r) { return r.json(); })])
     .then(function (a) {
-      var air = a[0].m || {}, layer = L.layerGroup();
+      var air = a[0].m || {}, layer = new ClusterLayer();
       var band = function (v) { return v > 100 ? ["#7048E8", "Изключително лошо"] : v > 80 ? ["#C2255C", "Много лошо"] : v > 60 ? ["#E03131", "Лошо"] :
         v > 40 ? ["#F59F00", "Умерено"] : v > 20 ? ["#94D82D", "Задоволително"] : ["#37B24D", "Добро"]; };
       a[1].forEach(function (m) {
         var v = air[m.r + "|" + m.n]; if (!v) return;
         var b = band(v.aqi);
-        L.marker(m.c, { icon: dot(b[0], v.aqi, 22, m.n) }).addTo(layer)
+        L.marker(m.c, { icon: dot(b[0], v.aqi, 22, m.n), sev: v.aqi > 60 ? 2 : 1 }).addTo(layer)
           .bindPopup("<b>Въздух – " + esc(m.n.charAt(0).toUpperCase() + m.n.slice(1)) + "</b><br>" + b[1] + " (индекс " + v.aqi + ")" +
             (v.pm10 != null ? "<br>PM10: " + v.pm10 + " µg/m³" : "") + (v.pm25 != null ? "<br>PM2.5: " + v.pm25 + " µg/m³" : "") +
             (v.max24 != null ? "<br>Най-лошо до 24 ч.: " + v.max24 : "") + "<br><small>Прогноза CAMS (Copernicus) / Open-Meteo, не измерване.</small>");
