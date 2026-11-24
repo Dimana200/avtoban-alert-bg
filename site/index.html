@@ -228,6 +228,48 @@ try { var saved = JSON.parse(localStorage.getItem("layers") || "{}"); for (var k
 var LAYERS = {};   // speed, red, avg, rep, api, river, fire, air -> layerGroup
 function showLayer(k) { var l = LAYERS[k]; if (!l || !map) return; if (SHOW[k]) l.addTo(map); else map.removeLayer(l); }
 
+// Markers that sit close together are drawn as one numbered circle when the map is zoomed out (own small code, no library).
+// The circle takes the colour of the worst item inside (red = accident / closed road, orange = warning, grey = camera).
+// Items with options.pin (accidents, closed roads) are never grouped. Zoomed in (CL_MAXZ + 1 and up) everything is drawn one by one, as before.
+var CL_CELL = 72, CL_MAXZ = 11, CL_COL = { 1: "#495057", 2: "#F08C00", 3: "#E03131" };
+var CL = { layers: [], grp: null, t: 0 };
+function clSoon() { clearTimeout(CL.t); CL.t = setTimeout(clDraw, 20); }
+// all visible ClusterLayers are grouped together, so cameras, reports and АПИ events never pile up on each other
+function clDraw() {
+  if (!map || !CL.grp) return;
+  var g = CL.grp, z = map.getZoom(), cells = {};
+  g.clearLayers();
+  CL.layers.forEach(function (lay) {
+    lay._items.forEach(function (m) {
+      if (m.options.pin) m.setZIndexOffset(1000);   // accidents and closed roads always on top of the circles
+      if (z > CL_MAXZ || m.options.pin) { g.addLayer(m); return; }
+      var p = map.project(m.getLatLng(), z), k = Math.floor(p.x / CL_CELL) + ":" + Math.floor(p.y / CL_CELL);
+      (cells[k] = cells[k] || []).push(m);
+    });
+  });
+  Object.keys(cells).forEach(function (k) {
+    var a = cells[k];
+    if (a.length === 1) { g.addLayer(a[0]); return; }
+    var sev = 1, la = 0, lo = 0;
+    a.forEach(function (m) { sev = Math.max(sev, m.options.sev || 1); la += m.getLatLng().lat; lo += m.getLatLng().lng; });
+    var n = a.length, size = n < 10 ? 34 : n < 100 ? 40 : 46;
+    var c = L.marker([la / n, lo / n], { zIndexOffset: sev * 100, icon: L.divIcon({ className: "", iconSize: [size, size], iconAnchor: [size / 2, size / 2],
+      html: '<div style="width:' + size + "px;height:" + size + "px;border-radius:50%;background:" + CL_COL[sev] + ';color:#fff;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font:700 ' +
+        (n < 100 ? 15 : 13) + 'px/1 var(--f-display);box-shadow:0 2px 8px rgba(0,0,0,.5)">' + (n > 999 ? "999+" : n) + "</div>" }) });
+    c.on("click", function () { map.fitBounds(L.latLngBounds(a.map(function (m) { return m.getLatLng(); })), { padding: [50, 50], maxZoom: CL_MAXZ + 2 }); });
+    g.addLayer(c);
+  });
+}
+var ClusterLayer = L.Layer.extend({
+  initialize: function () { this._items = []; },
+  addLayer: function (m) { this._items.push(m); if (this._map) clSoon(); return this; },
+  onAdd: function (m) {
+    if (!CL.grp) { CL.grp = L.layerGroup().addTo(m); m.on("zoomend", clSoon); }
+    CL.layers.push(this); clSoon();
+  },
+  onRemove: function () { var i = CL.layers.indexOf(this); if (i >= 0) CL.layers.splice(i, 1); clSoon(); }
+});
+
 function css(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
 function color(lv) { return lv ? css("--lv" + lv) : css("--ok"); }
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
@@ -365,7 +407,7 @@ var reportLayer = null;
 // average-speed sections of BG TOLL: a camera mark at each end, one popup per direction
 function loadAvgSpeed() {
   fetch("avgspeed.json").then(function (r) { return r.json(); }).then(function (js) {
-    var layer = LAYERS.avg = L.layerGroup(), seen = {};
+    var layer = LAYERS.avg = new ClusterLayer(), seen = {};
     (js.sections || []).forEach(function (s) {
       [[s.a, s.from], [s.b, s.to]].forEach(function (end) {
         var key = end[0].join(",");
@@ -386,7 +428,7 @@ function loadAvgSpeed() {
 // stationary speed cameras (OpenStreetMap + Столична община)
 function loadCameras() {
   fetch("cameras.json").then(function (r) { return r.json(); }).then(function (js) {
-    LAYERS.speed = L.layerGroup(); LAYERS.red = L.layerGroup();
+    LAYERS.speed = new ClusterLayer(); LAYERS.red = new ClusterLayer();
     (js.cameras || []).forEach(function (c) {
       var layer = c.t === "red" ? LAYERS.red : LAYERS.speed;
       var icon = L.divIcon({ className: "", iconSize: [22, 22], iconAnchor: [11, 11],
@@ -403,7 +445,7 @@ function loadReports() {
   // driver reports: a small file the server refreshes every 10 minutes (the app warns live by itself)
   return fetch("reports.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (js) {
     if (reportLayer) map.removeLayer(reportLayer);
-    reportLayer = LAYERS.rep = L.layerGroup();
+    reportLayer = LAYERS.rep = new ClusterLayer();
     (js.reports || []).forEach(function (f) {
       var t = f.t, up = f.up || 0, down = f.down || 0;
       var exp = new Date(f.exp);
@@ -411,7 +453,7 @@ function loadReports() {
       var sure = up >= 1;      // confirmed by another driver; unconfirmed ones are paler, dashed and not spoken by the app
       var icon = L.divIcon({ className: "", iconSize: [30, 30], iconAnchor: [15, 15],
         html: '<div style="width:30px;height:30px;border-radius:50%;background:#7B2FF7;color:#fff;border:3px ' + (sure ? "solid" : "dashed") + ' #fff;opacity:' + (sure ? 1 : 0.6) + ';display:flex;align-items:center;justify-content:center;font:700 14px/1 var(--f-display);box-shadow:0 2px 6px rgba(0,0,0,.4)">' + REPORT_LETTER[t] + "</div>" });
-      L.marker([f.lat, f.lon], { icon: icon }).addTo(reportLayer)
+      L.marker([f.lat, f.lon], { icon: icon, sev: (t === "accident" || t === "closed") ? 3 : 2, pin: t === "accident" || t === "closed" }).addTo(reportLayer)
         .bindPopup("<b>Сигнал от шофьор: " + esc(REPORT_NAMES[t]) + "</b>" + (sure ? "" : " <i>(непотвърден)</i>") +
           "<br>Потвърдили: " + up + " · Няма го: " + down +
           "<br>Валиден до " + exp.toLocaleTimeString("bg-BG", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Sofia" }) + " ч.");
@@ -431,10 +473,11 @@ function setLayer(k, layer) { if (LAYERS[k] && map) map.removeLayer(LAYERS[k]); 
 // АПИ (National Access Point): the app downloads the files itself and hands them to this map
 var API_STYLE = { Accident: ["#E03131", "!"], RoadClosed: ["#212529", "✕"], LaneClosed: ["#495057", "✕"] };
 window.apiEvents = function (list, at) {
-  var layer = L.layerGroup();
+  var layer = new ClusterLayer();
   (list || []).forEach(function (e) {
     var st = API_STYLE[e.type] || (e.set.indexOf("roadworks") === 0 || e.type === "Roadworks" ? ["#F08C00", "Р"] : ["#F59F00", "⚠"]);
-    L.marker([e.lat, e.lon], { icon: dot(st[0], st[1], 26, e.name) }).addTo(layer)
+    var hot = e.type === "Accident" || e.type === "RoadClosed";
+    L.marker([e.lat, e.lon], { icon: dot(st[0], st[1], 26, e.name), sev: hot ? 3 : (st[1] === "Р" ? 1 : 2), pin: hot }).addTo(layer)
       .bindPopup("<b>" + esc(e.name.charAt(0).toUpperCase() + e.name.slice(1)) + "</b>" + (e.text ? "<br>" + esc(e.text) : "") +
         "<br><small>Източник: АПИ, Национална точка за достъп" + (at ? " · " + new Date(at).toLocaleTimeString("bg-BG", { hour: "2-digit", minute: "2-digit" }) + " ч." : "") + "</small>");
   });
@@ -444,7 +487,8 @@ window.apiEvents = function (list, at) {
 // road sections with a concentration of accidents (УКПТП, ДАБДП): the line on the road plus a warning triangle
 function loadUkptp() {
   fetch("ukptp.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (js) {
-    var layer = L.layerGroup();
+    var layer = L.layerGroup(), tris = new ClusterLayer();
+    layer.addLayer(tris);
     var tri = L.divIcon({ className: "", iconSize: [26, 24], iconAnchor: [13, 12],
       html: '<svg width="26" height="24" viewBox="0 0 26 24"><path d="M13 1 25 23H1Z" fill="#fff" stroke="#E03131" stroke-width="3" stroke-linejoin="round"/>' +
             '<text x="13" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="#212529">!</text></svg>' });
@@ -453,7 +497,7 @@ function loadUkptp() {
         (s.len ? " (" + s.len + " м)" : "") + "<br>Област " + esc(s.obl) +
         "<br><small>Източник: ДАБДП, данни за " + esc(js.period) + ". Карайте особено внимателно.</small>";
       L.polyline(s.c, { renderer: canvas, color: "#E03131", weight: 9, opacity: 0.85, dashArray: "2 8", lineCap: "round" }).addTo(layer).bindPopup(pop);
-      L.marker(s.c[Math.floor(s.c.length / 2)], { icon: tri, zIndexOffset: 300 }).addTo(layer).bindPopup(pop);
+      L.marker(s.c[Math.floor(s.c.length / 2)], { icon: tri, zIndexOffset: 300, sev: 2 }).addTo(tris).bindPopup(pop);
     });
     setLayer("ukptp", layer);
   }).catch(function () { /* optional */ });
