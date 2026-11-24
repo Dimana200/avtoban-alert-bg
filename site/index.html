@@ -135,6 +135,9 @@ html.app .leaflet-top { z-index: 1001; }
 .ctr-btn { font: 700 16px/1 var(--f-display); letter-spacing: .02em; padding: 12px 16px; border-radius: 24px; border: 0; cursor: pointer;
   background: #1E66F5; color: #fff; box-shadow: 0 3px 10px rgba(0,0,0,.45); margin-bottom: 26px !important; }
 .ctr-btn[hidden] { display: none; }
+/* "Центрирай" sits in the middle of the bottom edge (the car/truck icon is bottom left, the "+" bottom right) */
+.leaflet-bottom.leaflet-left { left: 0; right: 0; display: flex; justify-content: center; pointer-events: none; }
+.leaflet-bottom.leaflet-left .leaflet-control { float: none; margin-left: 0; pointer-events: auto; }
 .me-arrow { background: none; border: 0; }
 .me-arrow img { width: 30px !important; max-width: 30px !important; height: auto !important; display: block; transform-origin: 50% 60%; transition: transform .5s ease-out; filter: drop-shadow(0 2px 5px rgba(0,0,0,.45)); }
 .ctr-btn.pic { background: none; box-shadow: none; padding: 0; border-radius: 0; line-height: 0; transition: transform .2s cubic-bezier(.3,1.6,.5,1); }
