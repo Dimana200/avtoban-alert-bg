@@ -1,0 +1,26 @@
+name: Delete expired reports
+on:
+  workflow_dispatch:
+    inputs:
+      delete:
+        description: "Really delete (unchecked = only count)"
+        type: boolean
+        default: false
+  schedule:
+    - cron: "17 3 * * *"     # once a day; scheduled runs only count until the delete is switched on
+permissions:
+  contents: read
+concurrency: cleanup-expired
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -q google-auth==2.35.0 requests==2.32.3
+      - env:
+          FIRESTORE_SA_KEY: ${{ secrets.FIRESTORE_SA_KEY }}
+          DELETE: ${{ github.event_name == 'workflow_dispatch' && inputs.delete && 'true' || 'false' }}
+          GRACE_HOURS: "24"
+          MAX_DELETES: "5000"
+        run: cd scripts && python3 cleanup_expired.py
